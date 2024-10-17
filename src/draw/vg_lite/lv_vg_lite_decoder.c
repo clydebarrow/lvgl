@@ -7,6 +7,7 @@
  *      INCLUDES
  *********************/
 
+#include "../lv_image_decoder_private.h"
 #include "lv_vg_lite_decoder.h"
 
 #if LV_USE_DRAW_VG_LITE
@@ -14,6 +15,7 @@
 #include "lv_vg_lite_utils.h"
 #include <stdlib.h>
 #include <string.h>
+#include "../../core/lv_global.h"
 
 /*********************
  *      DEFINES
@@ -43,7 +45,7 @@
  *  STATIC PROTOTYPES
  **********************/
 
-static lv_result_t decoder_info(lv_image_decoder_t * decoder, const void * src, lv_image_header_t * header);
+static lv_result_t decoder_info(lv_image_decoder_t * decoder, lv_image_decoder_dsc_t * src, lv_image_header_t * header);
 static lv_result_t decoder_open(lv_image_decoder_t * decoder, lv_image_decoder_dsc_t * dsc);
 static void decoder_close(lv_image_decoder_t * decoder, lv_image_decoder_dsc_t * dsc);
 static void image_color32_pre_mul(lv_color32_t * img_data, uint32_t px_size);
@@ -148,9 +150,9 @@ static void image_decode_to_index8_line(uint8_t * dest, const uint8_t * src, int
     }
 }
 
-static lv_result_t decoder_info(lv_image_decoder_t * decoder, const void * src, lv_image_header_t * header)
+static lv_result_t decoder_info(lv_image_decoder_t * decoder, lv_image_decoder_dsc_t * dsc, lv_image_header_t * header)
 {
-    lv_result_t res = lv_bin_decoder_info(decoder, src, header);
+    lv_result_t res = lv_bin_decoder_info(decoder, dsc, header);
     if(res != LV_RESULT_OK) {
         return res;
     }
@@ -184,8 +186,8 @@ static lv_result_t decoder_open_variable(lv_image_decoder_t * decoder, lv_image_
     int32_t height = dsc->header.h;
 
     /* create draw buf */
-    lv_draw_buf_t * draw_buf = lv_draw_buf_create_user(image_cache_draw_buf_handlers, width, height, DEST_IMG_FORMAT,
-                                                       LV_STRIDE_AUTO);
+    lv_draw_buf_t * draw_buf = lv_draw_buf_create_ex(image_cache_draw_buf_handlers, width, height, DEST_IMG_FORMAT,
+                                                     LV_STRIDE_AUTO);
     if(draw_buf == NULL) {
         return LV_RESULT_INVALID;
     }
@@ -256,8 +258,8 @@ static lv_result_t decoder_open_file(lv_image_decoder_t * decoder, lv_image_deco
         return LV_RESULT_INVALID;
     }
 
-    lv_draw_buf_t * draw_buf = lv_draw_buf_create_user(image_cache_draw_buf_handlers, width, height, DEST_IMG_FORMAT,
-                                                       LV_STRIDE_AUTO);
+    lv_draw_buf_t * draw_buf = lv_draw_buf_create_ex(image_cache_draw_buf_handlers, width, height, DEST_IMG_FORMAT,
+                                                     LV_STRIDE_AUTO);
     if(draw_buf == NULL) {
         lv_fs_close(&file);
         return LV_RESULT_INVALID;

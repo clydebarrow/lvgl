@@ -1,5 +1,5 @@
 /**
- * @file lv_stringn.h
+ * @file lv_string.h
  *
  */
 
@@ -146,6 +146,14 @@ char * lv_strcat(char * dst, const char * src);
  * @return A pointer to the destination string, which is dst.
  */
 char * lv_strncat(char * dst, const char * src, size_t src_len);
+
+/**
+ * @brief Searches for the first occurrence of character c in the string str.
+ * @param str Pointer to the null-terminated byte string to be searched.
+ * @param c The character to be searched for.
+ * @return A pointer to the first occurrence of character c in the string str, or a null pointer if c is not found.
+ */
+char * lv_strchr(const char * str, int c);
 
 /**********************
  *      MACROS

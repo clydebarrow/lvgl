@@ -11,13 +11,14 @@
 
 #if LV_USE_DRAW_VG_LITE
 
-#include "../lv_draw.h"
+#include "../lv_draw_private.h"
 #include "lv_draw_vg_lite_type.h"
 #include "lv_vg_lite_path.h"
 #include "lv_vg_lite_utils.h"
 #include "lv_vg_lite_decoder.h"
 #include "lv_vg_lite_grad.h"
 #include "lv_vg_lite_pending.h"
+#include "lv_vg_lite_stroke.h"
 
 /*********************
  *      DEFINES
@@ -74,6 +75,7 @@ void lv_draw_vg_lite_init(void)
     lv_vg_lite_image_dsc_init(unit);
 #if LV_USE_VECTOR_GRAPHIC
     lv_vg_lite_grad_init(unit, LV_VG_LITE_GRAD_CACHE_CNT);
+    lv_vg_lite_stroke_init(unit, LV_VG_LITE_STROKE_CACHE_CNT);
 #endif
     lv_vg_lite_path_init(unit);
     lv_vg_lite_decoder_init();
@@ -89,14 +91,7 @@ void lv_draw_vg_lite_deinit(void)
 
 static bool check_image_is_supported(const lv_draw_image_dsc_t * dsc)
 {
-    lv_image_header_t header;
-    lv_result_t res = lv_image_decoder_get_info(dsc->src, &header);
-    if(res != LV_RESULT_OK) {
-        LV_LOG_TRACE("get image info failed");
-        return false;
-    }
-
-    return lv_vg_lite_is_src_cf_supported(header.cf);
+    return lv_vg_lite_is_src_cf_supported(dsc->header.cf);
 }
 
 static void draw_execute(lv_draw_vg_lite_unit_t * u)
@@ -112,7 +107,22 @@ static void draw_execute(lv_draw_vg_lite_unit_t * u)
     lv_draw_buf_set_flag(layer->draw_buf, LV_IMAGE_FLAGS_PREMULTIPLIED);
 
     vg_lite_identity(&u->global_matrix);
-    vg_lite_translate(-layer->buf_area.x1, -layer->buf_area.y1, &u->global_matrix);
+    if(layer->buf_area.x1 || layer->buf_area.y1) {
+        vg_lite_translate(-layer->buf_area.x1, -layer->buf_area.y1, &u->global_matrix);
+    }
+
+#if LV_DRAW_TRANSFORM_USE_MATRIX
+    vg_lite_matrix_t layer_matrix;
+    lv_vg_lite_matrix(&layer_matrix, &t->matrix);
+    lv_vg_lite_matrix_multiply(&u->global_matrix, &layer_matrix);
+
+    /* Crop out extra pixels drawn due to scaling accuracy issues */
+    if(vg_lite_query_feature(gcFEATURE_BIT_VG_SCISSOR)) {
+        lv_area_t scissor_area = layer->phy_clip_area;
+        lv_area_move(&scissor_area, -layer->buf_area.x1, -layer->buf_area.y1);
+        lv_vg_lite_set_scissor_area(&scissor_area);
+    }
+#endif
 
     switch(t->type) {
         case LV_DRAW_TASK_TYPE_LABEL:
@@ -254,6 +264,7 @@ static int32_t draw_delete(lv_draw_unit_t * draw_unit)
     lv_vg_lite_image_dsc_deinit(unit);
 #if LV_USE_VECTOR_GRAPHIC
     lv_vg_lite_grad_deinit(unit);
+    lv_vg_lite_stroke_deinit(unit);
 #endif
     lv_vg_lite_path_deinit(unit);
     lv_vg_lite_decoder_deinit();

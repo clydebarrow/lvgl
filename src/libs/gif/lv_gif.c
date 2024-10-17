@@ -6,7 +6,9 @@
 /*********************
  *      INCLUDES
  *********************/
-#include "lv_gif.h"
+#include "../../misc/lv_timer_private.h"
+#include "../../core/lv_obj_class_private.h"
+#include "lv_gif_private.h"
 #if LV_USE_GIF
 
 #include "gifdec.h"
@@ -135,6 +137,36 @@ void lv_gif_resume(lv_obj_t * obj)
     lv_timer_resume(gifobj->timer);
 }
 
+bool lv_gif_is_loaded(lv_obj_t * obj)
+{
+    lv_gif_t * gifobj = (lv_gif_t *) obj;
+
+    return (gifobj->gif != NULL);
+}
+
+int32_t lv_gif_get_loop_count(lv_obj_t * obj)
+{
+    lv_gif_t * gifobj = (lv_gif_t *) obj;
+
+    if(gifobj->gif == NULL) {
+        return -1;
+    }
+
+    return gifobj->gif->loop_count;
+}
+
+void lv_gif_set_loop_count(lv_obj_t * obj, int32_t count)
+{
+    lv_gif_t * gifobj = (lv_gif_t *) obj;
+
+    if(gifobj->gif == NULL) {
+        LV_LOG_WARN("Gif resource not loaded correctly");
+        return;
+    }
+
+    gifobj->gif->loop_count = count;
+}
+
 /**********************
  *   STATIC FUNCTIONS
  **********************/
@@ -176,7 +208,7 @@ static void next_frame_task_cb(lv_timer_t * t)
         /*It was the last repeat*/
         lv_result_t res = lv_obj_send_event(obj, LV_EVENT_READY, NULL);
         lv_timer_pause(t);
-        if(res != LV_FS_RES_OK) return;
+        if(res != LV_RESULT_OK) return;
     }
 
     gd_render_frame(gifobj->gif, (uint8_t *)gifobj->imgdsc.data);

@@ -28,12 +28,6 @@ extern "C" {
 
 typedef void (*lv_event_cb_t)(lv_event_t * e);
 
-typedef struct {
-    lv_event_cb_t cb;
-    void * user_data;
-    uint32_t filter;
-} lv_event_dsc_t;
-
 /**
  * Type of event being sent to the object.
  */
@@ -45,6 +39,9 @@ typedef enum {
     LV_EVENT_PRESSING,            /**< The object is being pressed (called continuously while pressing)*/
     LV_EVENT_PRESS_LOST,          /**< The object is still being pressed but slid cursor/finger off of the object */
     LV_EVENT_SHORT_CLICKED,       /**< The object was pressed for a short period of time, then released it. Not called if scrolled.*/
+    LV_EVENT_SINGLE_CLICKED,      /**< Called for the first short click within a small distance and short time*/
+    LV_EVENT_DOUBLE_CLICKED,      /**< Called for the second short click within small distance and short time*/
+    LV_EVENT_TRIPLE_CLICKED,      /**< Called for the third short click within small distance and short time*/
     LV_EVENT_LONG_PRESSED,        /**< Object has been pressed for at least `long_press_time`.  Not called if scrolled.*/
     LV_EVENT_LONG_PRESSED_REPEAT, /**< Called after `long_press_time` in every `long_press_repeat_time` ms.  Not called if scrolled.*/
     LV_EVENT_CLICKED,             /**< Called on release if not scrolled (regardless to long press)*/
@@ -113,39 +110,25 @@ typedef enum {
 
     LV_EVENT_VSYNC,
 
-    _LV_EVENT_LAST,                 /** Number of default events*/
+    LV_EVENT_LAST,                 /** Number of default events*/
 
     LV_EVENT_PREPROCESS = 0x8000,   /** This is a flag that can be set with an event so it's processed
                                       before the class default event processing */
+    LV_EVENT_MARKED_DELETING = 0x10000,
 } lv_event_code_t;
 
-typedef lv_array_t lv_event_list_t;
-
-struct _lv_event_t {
-    void * current_target;
-    void * original_target;
-    lv_event_code_t code;
-    void * user_data;
-    void * param;
-    lv_event_t * prev;
-    uint8_t deleted : 1;
-    uint8_t stop_processing : 1;
-    uint8_t stop_bubbling : 1;
-};
+typedef struct {
+    lv_array_t array;
+    uint8_t is_traversing: 1;          /**< True: the list is being nested traversed */
+    uint8_t has_marked_deleting: 1;    /**< True: the list has marked deleting objects
+                                         when some of events are marked as deleting */
+} lv_event_list_t;
 
 /**
  * @brief Event callback.
  * Events are used to notify the user of some action being taken on the object.
  * For details, see ::lv_event_t.
  */
-
-/**********************
- * GLOBAL PROTOTYPES
- **********************/
-
-void _lv_event_push(lv_event_t * e);
-
-void _lv_event_pop(lv_event_t * e);
 
 lv_result_t lv_event_send(lv_event_list_t * list, lv_event_t * e, bool preprocess);
 
@@ -218,21 +201,17 @@ void lv_event_stop_processing(lv_event_t * e);
  * Register a new, custom event ID.
  * It can be used the same way as e.g. `LV_EVENT_CLICKED` to send custom events
  * @return      the new event id
- * @example
+ *
+ * Example:
+ * @code
  * uint32_t LV_EVENT_MINE = 0;
  * ...
  * e = lv_event_register_id();
  * ...
  * lv_obj_send_event(obj, LV_EVENT_MINE, &some_data);
+ * @endcode
  */
 uint32_t lv_event_register_id(void);
-
-/**
- * Nested events can be called and one of them might belong to an object that is being deleted.
- * Mark this object's `event_temp_data` deleted to know that its `lv_obj_send_event` should return `LV_RESULT_INVALID`
- * @param target     pointer to an event target which was deleted
- */
-void _lv_event_mark_deleted(void * target);
 
 /**********************
  *      MACROS
