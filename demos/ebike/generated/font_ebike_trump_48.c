@@ -4,10 +4,18 @@
  * Opts: --no-compress --no-prefilter --bpp 4 --size 48 --font TrumpGothicPro.ttf -r 0x20-0x7F --format lvgl -o font_ebike_trump_48.c --force-fast-kern-format
  ******************************************************************************/
 
-#ifdef LV_LVGL_H_INCLUDE_SIMPLE
+#ifdef __has_include
+    #if __has_include("lvgl.h")
+        #ifndef LV_LVGL_H_INCLUDE_SIMPLE
+            #define LV_LVGL_H_INCLUDE_SIMPLE
+        #endif
+    #endif
+#endif
+
+#if defined(LV_LVGL_H_INCLUDE_SIMPLE)
     #include "lvgl.h"
 #else
-    #include "lvgl/lvgl.h"
+    #include "../../../lvgl.h"
 #endif
 
 #ifndef FONT_EBIKE_TRUMP_48
@@ -22,6 +30,8 @@
 
 /*Store the image of the glyphs*/
 static LV_ATTRIBUTE_LARGE_CONST const uint8_t glyph_bitmap[] = {
+    /* U+0020 " " */
+
     /* U+0021 "!" */
     0x1f, 0xff, 0x30, 0xff, 0xf3, 0xf, 0xff, 0x20,
     0xff, 0xf2, 0xf, 0xff, 0x20, 0xff, 0xf1, 0xe,
@@ -2577,7 +2587,7 @@ static LV_ATTRIBUTE_LARGE_CONST const uint8_t glyph_bitmap[] = {
     0xbf, 0xf4, 0x1f, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xe1, 0x3e, 0xf9, 0x10, 0x26, 0xcf,
     0xff, 0xff, 0xfe, 0x20, 0x2, 0x70, 0x0, 0x0,
-    0x2, 0x8c, 0xfd, 0x81, 0x0,
+    0x2, 0x8c, 0xfd, 0x81, 0x0
 };
 
 

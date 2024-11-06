@@ -851,7 +851,7 @@
 
 /** GIF decoder library */
 #define LV_USE_GIF 0
-    #if LV_USE_GIF
+#if LV_USE_GIF
     /** GIF decoder accelerate */
     #define LV_GIF_CACHE_DECODE_DATA 0
 #endif
@@ -907,7 +907,8 @@
 /** Use external LZ4 library */
 #define LV_USE_LZ4_EXTERNAL  0
 
-/*SVG library*/
+/*SVG library
+ *  - Requires `LV_USE_VECTOR_GRAPHIC = 1` */
 #define LV_USE_SVG 0
 #define LV_USE_SVG_ANIMATION 0
 #define LV_USE_SVG_DEBUG 0
