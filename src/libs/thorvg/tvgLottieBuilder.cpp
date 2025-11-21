@@ -48,8 +48,8 @@ static void _rotationXYZ(Matrix* m, float degreeX, float degreeY, float degreeZ)
     auto radianZ = deg2rad(degreeZ);
 
     auto cx = cosf(radianX), sx = sinf(radianX);
-    auto cy = cosf(radianY), sy = sinf(radianY);;
-    auto cz = cosf(radianZ), sz = sinf(radianZ);;
+    auto cy = cosf(radianY), sy = sinf(radianY);
+    auto cz = cosf(radianZ), sz = sinf(radianZ);
     m->e11 = cy * cz;
     m->e12 = -cy * sz;
     m->e21 = sx * sy * cz + cx * sz;
@@ -181,7 +181,10 @@ void LottieBuilder::updateTransform(LottieGroup* parent, LottieObject** child, f
     uint8_t opacity;
 
     if (parent->mergeable()) {
-        if (!ctx->transform) ctx->transform = (Matrix*)malloc(sizeof(Matrix));
+        if (!ctx->transform) {
+        	ctx->transform = (Matrix*)lv_malloc(sizeof(Matrix));
+            LV_ASSERT_MALLOC(ctx->transform);
+        }
         _updateTransform(transform, frameNo, false, *ctx->transform, opacity, exps);
         return;
     }
@@ -481,7 +484,7 @@ void LottieBuilder::updateRect(LottieGroup* parent, LottieObject** child, float 
     } else {
         r = std::min({r, size.x * 0.5f, size.y * 0.5f});
     }
-    
+
     if (!ctx->repeaters.empty()) {
         auto shape = rect->pooling();
         shape->reset();
@@ -531,7 +534,7 @@ static void _appendCircle(Shape* shape, float cx, float cy, float rx, float ry, 
             points[i] *= *transform;
         }
     }
-    
+
     shape->appendPath(commands, cmdsCnt, points, ptsCnt);
 }
 

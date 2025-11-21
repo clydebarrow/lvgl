@@ -140,6 +140,17 @@ void testSvgElement(void)
     TEST_ASSERT_EQUAL_FLOAT((LV_ARRAY_GET(&svg_node_wh5->attrs, 1, lv_svg_attr_t))->value.fval, 1.0f);
     lv_svg_node_delete(svg_node_wh5);
 
+    const char * svg_wh6 = \
+                           "<svg width=\"2048\" height=\"1023.549\"></svg>";
+    lv_svg_node_t * svg_node_wh6 = lv_svg_load_data(svg_wh6, lv_strlen(svg_wh6));
+    lv_svg_render_obj_t * draw_list = lv_svg_render_create(svg_node_wh6);
+    float svg_wh6_w, svg_wh6_h;
+    lv_svg_render_get_viewport_size(draw_list, &svg_wh6_w, &svg_wh6_h);
+    TEST_ASSERT_EQUAL_FLOAT(svg_wh6_w, 2048.0f);
+    TEST_ASSERT_EQUAL_FLOAT(svg_wh6_h, 1023.549f);
+    lv_svg_render_delete(draw_list);
+    lv_svg_node_delete(svg_node_wh6);
+
     /* preserveAspectRatio */
 
     const char * svg_ar0 = \
@@ -161,7 +172,7 @@ void testSvgElement(void)
     lv_svg_node_delete(svg_node_ar);
 
     const char * svg_ar3 = \
-                           "<svg preserveAspectRatio=\"xMaxYMin unknow\"></svg>";
+                           "<svg preserveAspectRatio=\"xMaxYMin unknown\"></svg>";
     svg_node_ar = lv_svg_load_data(svg_ar3, lv_strlen(svg_ar3));
     TEST_ASSERT_EQUAL((LV_ARRAY_GET(&svg_node_ar->attrs, 0, lv_svg_attr_t))->value.uval, 6);
     lv_svg_node_delete(svg_node_ar);
@@ -522,6 +533,22 @@ void testStrokeFill(void)
     svg_node = LV_SVG_NODE_CHILD(svg_node_root, 0);
     c = (LV_ARRAY_GET(&svg_node->attrs, 0, lv_svg_attr_t))->value.uval;
     TEST_ASSERT_EQUAL(c, 0xff0000);
+    lv_svg_node_delete(svg_node_root);
+
+    const char * svg_sf12 = \
+                            "<svg><g fill=\"rgba(255, 255, 255, 1.0)\"/></svg>";
+    svg_node_root = lv_svg_load_data(svg_sf12, lv_strlen(svg_sf12));
+    svg_node = LV_SVG_NODE_CHILD(svg_node_root, 0);
+    c = (LV_ARRAY_GET(&svg_node->attrs, 0, lv_svg_attr_t))->value.uval;
+    TEST_ASSERT_EQUAL(c, 0xffffffff);
+    lv_svg_node_delete(svg_node_root);
+
+    const char * svg_sf13 = \
+                            "<svg><g fill=\"rgba(255, 255, 255, 128)\"/></svg>";
+    svg_node_root = lv_svg_load_data(svg_sf13, lv_strlen(svg_sf13));
+    svg_node = LV_SVG_NODE_CHILD(svg_node_root, 0);
+    c = (LV_ARRAY_GET(&svg_node->attrs, 0, lv_svg_attr_t))->value.uval;
+    TEST_ASSERT_EQUAL(c, 0x80ffffff);
     lv_svg_node_delete(svg_node_root);
 }
 

@@ -13,6 +13,7 @@
 #include "assets/spectrum_1.h"
 #include "assets/spectrum_2.h"
 #include "assets/spectrum_3.h"
+#include "../../lvgl_private.h"
 
 /*********************
  *      DEFINES
@@ -291,7 +292,7 @@ lv_obj_t * lv_demo_music_main_create(lv_obj_t * parent)
     LV_IMAGE_DECLARE(img_lv_demo_music_logo);
     lv_obj_t * logo = lv_image_create(lv_screen_active());
     lv_image_set_src(logo, &img_lv_demo_music_logo);
-    lv_obj_move_foreground(logo);
+    lv_obj_move_to_index(logo, -1);
     lv_obj_align_to(logo, spectrum_obj, LV_ALIGN_CENTER, 0, 0);
 
 #if LV_DEMO_MUSIC_SQUARE == 0 && LV_DEMO_MUSIC_ROUND == 0
@@ -359,7 +360,7 @@ void lv_demo_music_resume(void)
     lv_anim_set_exec_cb(&a, spectrum_anim_cb);
     lv_anim_set_var(&a, spectrum_obj);
     lv_anim_set_duration(&a, ((spectrum_len - spectrum_i) * 1000) / 30);
-    lv_anim_set_playback_duration(&a, 0);
+    lv_anim_set_reverse_duration(&a, 0);
     lv_anim_set_completed_cb(&a, spectrum_end_cb);
     lv_anim_start(&a);
 
@@ -698,7 +699,7 @@ static void track_load(uint32_t id)
     lv_anim_t a;
     lv_anim_init(&a);
     lv_anim_set_var(&a, album_image_obj);
-    lv_anim_set_values(&a, lv_obj_get_style_image_opa(album_image_obj, 0), LV_OPA_TRANSP);
+    lv_anim_set_values(&a, lv_obj_get_style_image_opa(album_image_obj, LV_PART_MAIN), LV_OPA_TRANSP);
     lv_anim_set_exec_cb(&a, album_fade_anim_cb);
     lv_anim_set_duration(&a, 500);
     lv_anim_start(&a);
@@ -798,7 +799,7 @@ static void spectrum_draw_event_cb(lv_event_t * e)
         lv_layer_t * layer = lv_event_get_layer(e);
 
         lv_opa_t opa = lv_obj_get_style_opa_recursive(obj, LV_PART_MAIN);
-        if(opa < LV_OPA_MIN) return;
+        if(opa <= LV_OPA_MIN) return;
 
         lv_point_t center;
         lv_area_t obj_coords;
@@ -808,7 +809,7 @@ static void spectrum_draw_event_cb(lv_event_t * e)
 
         lv_draw_triangle_dsc_t draw_dsc;
         lv_draw_triangle_dsc_init(&draw_dsc);
-        draw_dsc.bg_opa = LV_OPA_COVER;
+        draw_dsc.opa = LV_OPA_COVER;
 
         uint16_t r[64];
         uint32_t i;
@@ -864,12 +865,12 @@ static void spectrum_draw_event_cb(lv_event_t * e)
                 v = (r[k] * animv + r[j] * (amax - animv)) / amax;
             }
 
-            if(v < BAR_COLOR1_STOP) draw_dsc.bg_color = BAR_COLOR1;
-            else if(v > (uint32_t)BAR_COLOR3_STOP) draw_dsc.bg_color = BAR_COLOR3;
-            else if(v > BAR_COLOR2_STOP) draw_dsc.bg_color = lv_color_mix(BAR_COLOR3, BAR_COLOR2,
-                                                                              ((v - BAR_COLOR2_STOP) * 255) / (BAR_COLOR3_STOP - BAR_COLOR2_STOP));
-            else draw_dsc.bg_color = lv_color_mix(BAR_COLOR2, BAR_COLOR1,
-                                                      ((v - BAR_COLOR1_STOP) * 255) / (BAR_COLOR2_STOP - BAR_COLOR1_STOP));
+            if(v < BAR_COLOR1_STOP) draw_dsc.color = BAR_COLOR1;
+            else if(v > (uint32_t)BAR_COLOR3_STOP) draw_dsc.color = BAR_COLOR3;
+            else if(v > BAR_COLOR2_STOP) draw_dsc.color = lv_color_mix(BAR_COLOR3, BAR_COLOR2,
+                                                                           ((v - BAR_COLOR2_STOP) * 255) / (BAR_COLOR3_STOP - BAR_COLOR2_STOP));
+            else draw_dsc.color = lv_color_mix(BAR_COLOR2, BAR_COLOR1,
+                                                   ((v - BAR_COLOR1_STOP) * 255) / (BAR_COLOR2_STOP - BAR_COLOR1_STOP));
 
             uint32_t di = deg + deg_space;
 

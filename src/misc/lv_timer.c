@@ -216,12 +216,14 @@ void lv_timer_set_period(lv_timer_t * timer, uint32_t period)
 {
     LV_ASSERT_NULL(timer);
     timer->period = period;
+    lv_timer_handler_resume();
 }
 
 void lv_timer_ready(lv_timer_t * timer)
 {
     LV_ASSERT_NULL(timer);
     timer->last_run = lv_tick_get() - timer->period - 1;
+    lv_timer_handler_resume();
 }
 
 void lv_timer_set_repeat_count(lv_timer_t * timer, int32_t repeat_count)
@@ -322,7 +324,11 @@ static bool lv_timer_exec(lv_timer_t * timer)
         timer->last_run = lv_tick_get();
         LV_TRACE_TIMER("calling timer callback: %p", *((void **)&timer->timer_cb));
 
-        if(timer->timer_cb && original_repeat_count != 0) timer->timer_cb(timer);
+        if(timer->timer_cb && original_repeat_count != 0) {
+            LV_PROFILER_TIMER_BEGIN_TAG("timer_cb");
+            timer->timer_cb(timer);
+            LV_PROFILER_TIMER_END_TAG("timer_cb");
+        }
 
         if(!state.timer_deleted) {
             LV_TRACE_TIMER("timer callback %p finished", *((void **)&timer->timer_cb));

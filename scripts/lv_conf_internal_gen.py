@@ -16,6 +16,22 @@ if sys.version_info < (3,6,0):
   print("Python >=3.6 is required", file=sys.stderr)
   exit(1)
 
+def check_for_tabs(file_path):
+    errors = []
+    with open(file_path, 'r') as file:
+        for line_number, line in enumerate(file, 1):
+            if '\t' in line:
+                errors.append(f" {file_path}:{line_number}")
+
+    if errors:
+        print(f"Tabs found in the following files:", file=sys.stderr)
+        for error in errors:
+            print(error, file=sys.stderr)
+        print("Please replace tabs with spaces.", file=sys.stderr)
+        exit(1)
+
+check_for_tabs(LV_CONF_TEMPLATE)
+
 fin = open(LV_CONF_TEMPLATE)
 fout = open(LV_CONF_INTERNAL, "w", newline='')
 
@@ -38,6 +54,7 @@ fout.write(
 #define LV_OS_RTTHREAD      4
 #define LV_OS_WINDOWS       5
 #define LV_OS_MQX           6
+#define LV_OS_SDL2          7
 #define LV_OS_CUSTOM        255
 
 #define LV_STDLIB_BUILTIN           0
@@ -46,10 +63,13 @@ fout.write(
 #define LV_STDLIB_RTTHREAD          3
 #define LV_STDLIB_CUSTOM            255
 
-#define LV_DRAW_SW_ASM_NONE         0
-#define LV_DRAW_SW_ASM_NEON         1
-#define LV_DRAW_SW_ASM_HELIUM       2
-#define LV_DRAW_SW_ASM_CUSTOM       255
+#define LV_DRAW_SW_ASM_NONE             0
+#define LV_DRAW_SW_ASM_NEON             1
+#define LV_DRAW_SW_ASM_HELIUM           2
+#define LV_DRAW_SW_ASM_CUSTOM           255
+
+#define LV_NEMA_HAL_CUSTOM          0
+#define LV_NEMA_HAL_STM32           1
 
 /** Handle special Kconfig options. */
 #ifndef LV_KCONFIG_IGNORE
@@ -71,11 +91,7 @@ fout.write(
 /* If lv_conf.h is not skipped, include it. */
 #if !defined(LV_CONF_SKIP) || defined(LV_CONF_PATH)
     #ifdef LV_CONF_PATH                           /* If there is a path defined for lv_conf.h, use it */
-        #define __LV_TO_STR_AUX(x) #x
-        #define __LV_TO_STR(x) __LV_TO_STR_AUX(x)
-        #include __LV_TO_STR(LV_CONF_PATH)
-        #undef __LV_TO_STR_AUX
-        #undef __LV_TO_STR
+        #include LV_CONF_PATH                     /* Note: Make sure to define custom CONF_PATH as a string */
     #elif defined(LV_CONF_INCLUDE_SIMPLE)         /* Or simply include lv_conf.h is enabled. */
         #include "lv_conf.h"
     #else
@@ -117,9 +133,9 @@ for line in fin.read().splitlines():
     indent = r[1]
 
     name = r[3]
-    name = re.sub('\(.*?\)', '', name, 1)    #remove parentheses from macros. E.g. MY_FUNC(5) -> MY_FUNC
+    name = re.sub(r'\(.*?\)', '', name, count=1)    #remove parentheses from macros. E.g. MY_FUNC(5) -> MY_FUNC
 
-    line = re.sub('[\s]*', '', line, 1)
+    line = re.sub(r'[\s]*', '', line, count=1)
 
     #If the value should be 1 (enabled) by default use a more complex structure for Kconfig checks because
     #if a not defined CONFIG_... value should be interpreted as 0 and not the LVGL default
@@ -169,6 +185,9 @@ r'''
  * End of parsing lv_conf_template.h
  -----------------------------------*/
 
+/*Fix inconsistent name*/
+#define LV_USE_ANIMIMAGE LV_USE_ANIMIMG
+
 #ifndef __ASSEMBLY__
 LV_EXPORT_CONST_INT(LV_DPI_DEF);
 LV_EXPORT_CONST_INT(LV_DRAW_BUF_STRIDE_ALIGN);
@@ -176,6 +195,15 @@ LV_EXPORT_CONST_INT(LV_DRAW_BUF_ALIGN);
 #endif
 
 #undef LV_KCONFIG_PRESENT
+
+/* Disable VGLite drivers if VGLite drawing is disabled */
+#ifndef LV_USE_VG_LITE_DRIVER
+    #define LV_USE_VG_LITE_DRIVER 0
+#endif
+
+#ifndef LV_USE_VG_LITE_THORVG
+    #define LV_USE_VG_LITE_THORVG 0
+#endif
 
 /* Set some defines if a dependency is disabled. */
 #if LV_USE_LOG == 0
@@ -190,22 +218,63 @@ LV_EXPORT_CONST_INT(LV_DRAW_BUF_ALIGN);
     #define LV_LOG_TRACE_ANIM       0
 #endif  /*LV_USE_LOG*/
 
+#if LV_USE_WAYLAND == 0
+    #define LV_WAYLAND_USE_DMABUF           0
+    #define LV_WAYLAND_WINDOW_DECORATIONS   0
+#endif /* LV_USE_WAYLAND */
+
+#if LV_USE_LINUX_DRM == 0
+    #define LV_LINUX_DRM_USE_EGL     0
+#endif /*LV_USE_LINUX_DRM*/
+
 #if LV_USE_SYSMON == 0
     #define LV_USE_PERF_MONITOR 0
     #define LV_USE_MEM_MONITOR 0
+    #define LV_SYSMON_PROC_IDLE_AVAILABLE 0
 #endif /*LV_USE_SYSMON*/
 
+#if LV_USE_PERF_MONITOR == 0
+    #define LV_USE_PERF_MONITOR_LOG_MODE 0
+#endif /*LV_USE_PERF_MONITOR*/
+
+#if LV_BUILD_DEMOS == 0
+    #define LV_USE_DEMO_WIDGETS 0
+    #define LV_USE_DEMO_KEYPAD_AND_ENCODER 0
+    #define LV_USE_DEMO_BENCHMARK 0
+    #define LV_USE_DEMO_RENDER 0
+    #define LV_USE_DEMO_STRESS 0
+    #define LV_USE_DEMO_MUSIC 0
+    #define LV_USE_DEMO_VECTOR_GRAPHIC  0
+    #define LV_USE_DEMO_FLEX_LAYOUT     0
+    #define LV_USE_DEMO_MULTILANG       0
+    #define LV_USE_DEMO_EBIKE           0
+    #define LV_USE_DEMO_HIGH_RES        0
+    #define LV_USE_DEMO_SMARTWATCH      0
+#endif /* LV_BUILD_DEMOS */
+
 #ifndef LV_USE_LZ4
-    #define LV_USE_LZ4  (LV_USE_LZ4_INTERNAL || LV_USE_LZ4_EXTERNAL)
+    #if (LV_USE_LZ4_INTERNAL || LV_USE_LZ4_EXTERNAL)
+        #define LV_USE_LZ4 1
+    #else
+        #define LV_USE_LZ4 0
+    #endif
 #endif
 
 #ifndef LV_USE_THORVG
-    #define LV_USE_THORVG  (LV_USE_THORVG_INTERNAL || LV_USE_THORVG_EXTERNAL)
+    #if (LV_USE_THORVG_INTERNAL || LV_USE_THORVG_EXTERNAL)
+        #define LV_USE_THORVG 1
+    #else
+        #define LV_USE_THORVG 0
+    #endif
 #endif
+
+#ifndef LV_USE_EGL
+	#define LV_USE_EGL LV_LINUX_DRM_USE_EGL
+#endif /* LV_USE_EGL */
 
 #if LV_USE_OS
     #if (LV_USE_FREETYPE || LV_USE_THORVG) && LV_DRAW_THREAD_STACK_SIZE < (32 * 1024)
-        #warning "Increase LV_DRAW_THREAD_STACK_SIZE to at least 32KB for FreeType or ThorVG."
+        #error "Increase LV_DRAW_THREAD_STACK_SIZE to at least 32KB for FreeType or ThorVG."
     #endif
 
     #if defined(LV_DRAW_THREAD_STACKSIZE) && !defined(LV_DRAW_THREAD_STACK_SIZE)

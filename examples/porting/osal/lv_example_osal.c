@@ -9,6 +9,7 @@
 #include "../../lv_examples.h"
 
 #if LV_BUILD_EXAMPLES
+#include "../../../lvgl_private.h"
 
 /*********************
  *      DEFINES
@@ -50,7 +51,8 @@ void lv_example_osal(void)
         LV_LOG_ERROR("Error initializing thread sync");
     }
 
-    if(lv_thread_init(&increment_thread, LV_THREAD_PRIO_MID, increment_thread_entry, 2048, NULL) != LV_RESULT_OK) {
+    if(lv_thread_init(&increment_thread, "inc_th", LV_THREAD_PRIO_MID, increment_thread_entry, 2048,
+                      NULL) != LV_RESULT_OK) {
         LV_LOG_ERROR("Error initializing thread");
     }
 }
@@ -74,7 +76,7 @@ static void increment_thread_entry(void * user_data)
     uint32_t press_count = 0;
 
     lv_lock();
-    counter_label = lv_label_create(lv_scr_act());
+    counter_label = lv_label_create(lv_screen_active());
     lv_obj_align(counter_label, LV_ALIGN_CENTER, 0, 0);
     lv_label_set_text_fmt(counter_label, "Pressed %" LV_PRIu32 " times", press_count);
     lv_unlock();

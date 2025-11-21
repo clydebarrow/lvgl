@@ -175,7 +175,10 @@ static lv_result_t decoder_open_variable(lv_image_decoder_t * decoder, lv_image_
     LV_UNUSED(decoder); /*Unused*/
 
     lv_draw_buf_t src_img_buf;
-    lv_draw_buf_from_image(&src_img_buf, dsc->src);
+    lv_result_t res = lv_draw_buf_from_image(&src_img_buf, dsc->src);
+    if(res != LV_RESULT_OK) {
+        return res;
+    }
 
     /* Since dsc->header.cf is uniformly set to I8,
      * the original format is obtained from src for conversion.
@@ -215,7 +218,7 @@ static lv_result_t decoder_open_variable(lv_image_decoder_t * decoder, lv_image_
     if(dsc->args.premultiply) {
         /* pre-multiply palette */
         image_color32_pre_mul((lv_color32_t *)dest, palette_size);
-        draw_buf->header.flags |= LV_IMAGE_FLAGS_PREMULTIPLIED;
+        lv_draw_buf_set_flag(draw_buf, LV_IMAGE_FLAGS_PREMULTIPLIED);
     }
 
     /* move to index image map */
@@ -295,7 +298,7 @@ static lv_result_t decoder_open_file(lv_image_decoder_t * decoder, lv_image_deco
     if(dsc->args.premultiply) {
         /* pre-multiply palette */
         image_color32_pre_mul((lv_color32_t *)dest, palette_size);
-        draw_buf->header.flags |= LV_IMAGE_FLAGS_PREMULTIPLIED;
+        lv_draw_buf_set_flag(draw_buf, LV_IMAGE_FLAGS_PREMULTIPLIED);
     }
 
     src_temp = lv_malloc(src_stride);

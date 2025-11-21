@@ -70,7 +70,7 @@ typedef enum {
     LV_EVENT_DRAW_POST_BEGIN,     /**< Starting the post draw phase (when all children are drawn)*/
     LV_EVENT_DRAW_POST,           /**< Perform the post draw phase (when all children are drawn)*/
     LV_EVENT_DRAW_POST_END,       /**< Finishing the post draw phase (when all children are drawn)*/
-    LV_EVENT_DRAW_TASK_ADDED,     /**< Adding a draw task */
+    LV_EVENT_DRAW_TASK_ADDED,     /**< Adding a draw task. The `LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS` flag needs to be set */
 
     /** Special events */
     LV_EVENT_VALUE_CHANGED,       /**< Widget's value has changed (i.e. slider moved)*/
@@ -78,6 +78,7 @@ typedef enum {
     LV_EVENT_REFRESH,             /**< Notify Widget to refresh something on it (for user)*/
     LV_EVENT_READY,               /**< A process has finished */
     LV_EVENT_CANCEL,              /**< A process has been cancelled */
+    LV_EVENT_STATE_CHANGED,       /**< The state of the widget changed*/
 
     /** Other events */
     LV_EVENT_CREATE,              /**< Object is being created */
@@ -93,22 +94,31 @@ typedef enum {
     LV_EVENT_STYLE_CHANGED,       /**< Object's style has changed */
     LV_EVENT_LAYOUT_CHANGED,      /**< A child's position position has changed due to a layout recalculation */
     LV_EVENT_GET_SELF_SIZE,       /**< Get internal size of a widget */
+    LV_EVENT_UPDATE_LAYOUT_COMPLETED,    /**< Sent after layout update completes*/
 
     /** Events of optional LVGL components */
-    LV_EVENT_INVALIDATE_AREA,
-    LV_EVENT_RESOLUTION_CHANGED,
-    LV_EVENT_COLOR_FORMAT_CHANGED,
-    LV_EVENT_REFR_REQUEST,
-    LV_EVENT_REFR_START,
-    LV_EVENT_REFR_READY,
-    LV_EVENT_RENDER_START,
-    LV_EVENT_RENDER_READY,
-    LV_EVENT_FLUSH_START,
-    LV_EVENT_FLUSH_FINISH,
-    LV_EVENT_FLUSH_WAIT_START,
-    LV_EVENT_FLUSH_WAIT_FINISH,
+    LV_EVENT_INVALIDATE_AREA,     /**< An area is invalidated (marked for redraw). `lv_event_get_param(e)`
+                                   * returns a pointer to an `lv_area_t` object with the coordinates of the
+                                   * area to be invalidated.  The area can be freely modified if needed to
+                                   * adapt it a special requirement of the display. Usually needed with
+                                   * monochrome displays to invalidate `N x 8` rows or columns in one pass. */
+    LV_EVENT_RESOLUTION_CHANGED,  /**< Sent when the resolution changes due to `lv_display_set_resolution()` or `lv_display_set_rotation()`. */
+    LV_EVENT_COLOR_FORMAT_CHANGED,/**< Sent as a result of any call to `lv_display_set_color_format()`. */
+    LV_EVENT_REFR_REQUEST,        /**< Sent when something happened that requires redraw. */
+    LV_EVENT_REFR_START,          /**< Sent before a refreshing cycle starts. Sent even if there is nothing to redraw. */
+    LV_EVENT_REFR_READY,          /**< Sent when refreshing has been completed (after rendering and calling flush callback). Sent even if no redraw happened. */
+    LV_EVENT_RENDER_START,        /**< Sent just before rendering begins. */
+    LV_EVENT_RENDER_READY,        /**< Sent after rendering has been completed. */
+    LV_EVENT_FLUSH_START,         /**< Sent before flush callback is called. */
+    LV_EVENT_FLUSH_FINISH,        /**< Sent after flush callback call has returned. */
+    LV_EVENT_FLUSH_WAIT_START,    /**< Sent before flush wait callback is called. */
+    LV_EVENT_FLUSH_WAIT_FINISH,   /**< Sent after flush wait callback call has returned. */
 
     LV_EVENT_VSYNC,
+    LV_EVENT_VSYNC_REQUEST,
+#if LV_USE_TRANSLATION
+    LV_EVENT_TRANSLATION_LANGUAGE_CHANGED, /**< Sent when the translation language changed. */
+#endif /*LV_USE_TRANSLATION*/
 
     LV_EVENT_LAST,                 /** Number of default events */
 
@@ -191,11 +201,26 @@ void * lv_event_get_user_data(lv_event_t * e);
 void lv_event_stop_bubbling(lv_event_t * e);
 
 /**
+ * Stop event from trickling down to children.
+ * This is only valid when called in the middle of an event processing chain.
+ * @param e     pointer to the event descriptor
+ */
+void lv_event_stop_trickling(lv_event_t * e);
+
+/**
  * Stop processing this event.
  * This is only valid when called in the middle of an event processing chain.
  * @param e     pointer to the event descriptor
  */
 void lv_event_stop_processing(lv_event_t * e);
+
+/**
+ * Helper function typically used in LV_EVENT_DELETE
+ * to free the event's user_data
+ * @param e     pointer to an event descriptor
+ */
+void lv_event_free_user_data_cb(lv_event_t * e);
+
 
 /**
  * Register a new, custom event ID.
@@ -212,6 +237,13 @@ void lv_event_stop_processing(lv_event_t * e);
  * @endcode
  */
 uint32_t lv_event_register_id(void);
+
+/**
+ * Get the name of an event code.
+ * @param code  the event code
+ * @return      the name of the event code as a string
+ */
+const char * lv_event_code_get_name(lv_event_code_t code);
 
 /**********************
  *      MACROS

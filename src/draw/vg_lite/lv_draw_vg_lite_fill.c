@@ -44,13 +44,12 @@
 /**********************
  *   GLOBAL FUNCTIONS
  **********************/
-
-void lv_draw_vg_lite_fill(lv_draw_unit_t * draw_unit, const lv_draw_fill_dsc_t * dsc, const lv_area_t * coords)
+void lv_draw_vg_lite_fill(lv_draw_task_t * t, const lv_draw_fill_dsc_t * dsc, const lv_area_t * coords)
 {
-    lv_draw_vg_lite_unit_t * u = (lv_draw_vg_lite_unit_t *)draw_unit;
+    lv_draw_vg_lite_unit_t * u = (lv_draw_vg_lite_unit_t *)t->draw_unit;
 
     lv_area_t clip_area;
-    if(!lv_area_intersect(&clip_area, coords, draw_unit->clip_area)) {
+    if(!lv_area_intersect(&clip_area, coords, &t->clip_area)) {
         /*Fully clipped, nothing to do*/
         return;
     }
@@ -58,6 +57,14 @@ void lv_draw_vg_lite_fill(lv_draw_unit_t * draw_unit, const lv_draw_fill_dsc_t *
     LV_PROFILER_DRAW_BEGIN;
 
     vg_lite_matrix_t matrix = u->global_matrix;
+
+    /* Improve GPU rendering efficiency using simpler fill modes */
+    if(dsc->radius == 0 && dsc->opa >= LV_OPA_MAX && dsc->grad.dir == LV_GRAD_DIR_NONE &&
+       lv_matrix_is_identity((lv_matrix_t *)&matrix)) {
+        lv_vg_lite_clear(&u->target_buffer, &clip_area, lv_vg_lite_color(dsc->color, LV_OPA_COVER, false));
+        LV_PROFILER_DRAW_END;
+        return;
+    }
 
     lv_vg_lite_path_t * path = lv_vg_lite_path_get(u, VG_LITE_FP32);
     lv_vg_lite_path_set_quality(path, dsc->radius == 0 ? VG_LITE_LOW : VG_LITE_HIGH);
@@ -68,18 +75,12 @@ void lv_draw_vg_lite_fill(lv_draw_unit_t * draw_unit, const lv_draw_fill_dsc_t *
                                 dsc->radius);
     lv_vg_lite_path_end(path);
 
-    vg_lite_path_t * vg_lite_path = lv_vg_lite_path_get_path(path);
-
-    LV_VG_LITE_ASSERT_DEST_BUFFER(&u->target_buffer);
-    LV_VG_LITE_ASSERT_PATH(vg_lite_path);
-    LV_VG_LITE_ASSERT_MATRIX(&matrix);
-
     if(dsc->grad.dir != LV_GRAD_DIR_NONE) {
 #if LV_USE_VECTOR_GRAPHIC
         lv_vg_lite_draw_grad_helper(
-            u,
+            u->grad_ctx,
             &u->target_buffer,
-            vg_lite_path,
+            lv_vg_lite_path_get_path(path),
             coords,
             &dsc->grad,
             &matrix,
@@ -89,17 +90,15 @@ void lv_draw_vg_lite_fill(lv_draw_unit_t * draw_unit, const lv_draw_fill_dsc_t *
         LV_LOG_WARN("Gradient fill is not supported without VECTOR_GRAPHIC");
 #endif
     }
-    else { /* normal fill */
-        vg_lite_color_t color = lv_vg_lite_color(dsc->color, dsc->opa, true);
-        LV_PROFILER_DRAW_BEGIN_TAG("vg_lite_draw");
-        LV_VG_LITE_CHECK_ERROR(vg_lite_draw(
-                                   &u->target_buffer,
-                                   vg_lite_path,
-                                   VG_LITE_FILL_EVEN_ODD,
-                                   &matrix,
-                                   VG_LITE_BLEND_SRC_OVER,
-                                   color));
-        LV_PROFILER_DRAW_END_TAG("vg_lite_draw");
+    else {
+        /* normal fill */
+        lv_vg_lite_draw(
+            &u->target_buffer,
+            lv_vg_lite_path_get_path(path),
+            VG_LITE_FILL_EVEN_ODD,
+            &matrix,
+            VG_LITE_BLEND_SRC_OVER,
+            lv_vg_lite_color(dsc->color, dsc->opa, true));
     }
 
     lv_vg_lite_path_drop(u, path);

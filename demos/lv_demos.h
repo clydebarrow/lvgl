@@ -35,22 +35,6 @@ extern "C" {
 #include "widgets/lv_demo_widgets.h"
 #endif
 
-#if LV_USE_DEMO_FLEX_LAYOUT
-#include "flex_layout/lv_demo_flex_layout.h"
-#endif
-
-#if LV_USE_DEMO_TRANSFORM
-#include "transform/lv_demo_transform.h"
-#endif
-
-#if LV_USE_DEMO_SCROLL
-#include "scroll/lv_demo_scroll.h"
-#endif
-
-#if LV_USE_DEMO_MULTILANG
-#include "multilang/lv_demo_multilang.h"
-#endif
-
 #if LV_USE_DEMO_VECTOR_GRAPHIC && LV_USE_VECTOR_GRAPHIC
 #include "vector_graphic/lv_demo_vector_graphic.h"
 #endif
@@ -59,8 +43,8 @@ extern "C" {
 #include "render/lv_demo_render.h"
 #endif
 
-#if LV_USE_DEMO_EBIKE
-#include "ebike/lv_demo_ebike.h"
+#if LV_USE_DEMO_GLTF
+#include "gltf/lv_demo_gltf.h"
 #endif
 
 /*********************
@@ -96,4 +80,4 @@ void lv_demos_show_help(void);
 } /* extern "C" */
 #endif
 
-#endif /*LV_DEMO_H*/
+#endif /*LV_DEMOS_H*/

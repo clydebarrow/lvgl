@@ -10,6 +10,8 @@
 #include "../../stdlib/lv_sprintf.h"
 #include "../lv_assert.h"
 #include "lv_cache_entry_private.h"
+#include "lv_cache_private.h"
+#include "../lv_profiler.h"
 
 /*********************
  *      DEFINES
@@ -25,6 +27,7 @@
 static void cache_drop_internal_no_lock(lv_cache_t * cache, const void * key, void * user_data);
 static bool cache_evict_one_internal_no_lock(lv_cache_t * cache, void * user_data);
 static lv_cache_entry_t * cache_add_internal_no_lock(lv_cache_t * cache, const void * key, void * user_data);
+
 /**********************
  *  GLOBAL VARIABLES
  **********************/
@@ -180,6 +183,7 @@ lv_cache_entry_t * lv_cache_acquire_or_create(lv_cache_t * cache, const void * k
     bool create_res = cache->ops.create_cb(lv_cache_entry_get_data(entry), user_data);
     if(create_res == false) {
         cache->clz->remove_cb(cache, entry, user_data);
+        cache->ops.free_cb(lv_cache_entry_get_data(entry), user_data);
         lv_cache_entry_delete(entry);
         entry = NULL;
     }
@@ -316,7 +320,7 @@ static void cache_drop_internal_no_lock(lv_cache_t * cache, const void * key, vo
         lv_cache_entry_delete(entry);
     }
     else {
-        lv_cache_entry_set_invalid(entry, true);
+        lv_cache_entry_set_flag(entry, LV_CACHE_ENTRY_FLAG_INVALID);
         cache->clz->remove_cb(cache, entry, user_data);
     }
 }

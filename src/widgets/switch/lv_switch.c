@@ -1,5 +1,5 @@
 /**
- * @file lv_sw.c
+ * @file lv_switch.c
  *
  */
 
@@ -62,7 +62,7 @@ const lv_obj_class_t lv_switch_class = {
     .group_def = LV_OBJ_CLASS_GROUP_DEF_TRUE,
     .instance_size = sizeof(lv_switch_t),
     .base_class = &lv_obj_class,
-    .name = "switch",
+    .name = "lv_switch",
 };
 
 /**********************
@@ -163,9 +163,14 @@ static void lv_switch_event(const lv_obj_class_t * class_p, lv_event_t * e)
         *s = LV_MAX(*s, knob_size);
         *s = LV_MAX(*s, lv_obj_calculate_ext_draw_size(obj, LV_PART_INDICATOR));
     }
-    else if(code == LV_EVENT_VALUE_CHANGED) {
-        lv_switch_trigger_anim(obj);
-        lv_obj_invalidate(obj);
+    else if(code == LV_EVENT_STATE_CHANGED) {
+        lv_state_t prev_state = lv_event_get_prev_state(e);
+        lv_state_t diff = prev_state ^ lv_obj_get_state(obj);
+
+        if(diff & LV_STATE_CHECKED) {
+            lv_switch_trigger_anim(obj);
+            lv_obj_invalidate(obj);
+        }
     }
     else if(code == LV_EVENT_DRAW_MAIN) {
         draw_main(e);
@@ -186,6 +191,7 @@ static void draw_main(lv_event_t * e)
 
     lv_draw_rect_dsc_t draw_indic_dsc;
     lv_draw_rect_dsc_init(&draw_indic_dsc);
+    draw_indic_dsc.base.layer = layer;
     lv_obj_init_draw_rect_dsc(obj, LV_PART_INDICATOR, &draw_indic_dsc);
     lv_draw_rect(layer, &draw_indic_dsc, &indic_area);
 
@@ -265,6 +271,7 @@ static void draw_main(lv_event_t * e)
 
     lv_draw_rect_dsc_t knob_rect_dsc;
     lv_draw_rect_dsc_init(&knob_rect_dsc);
+    knob_rect_dsc.base.layer = layer;
     lv_obj_init_draw_rect_dsc(obj, LV_PART_KNOB, &knob_rect_dsc);
 
     lv_draw_rect(layer, &knob_rect_dsc, &knob_area);
@@ -294,6 +301,9 @@ static void lv_switch_anim_completed(lv_anim_t * a)
 static void lv_switch_trigger_anim(lv_obj_t * obj)
 {
     LV_ASSERT_OBJ(obj, MY_CLASS);
+    /*If the widget is not rendered yet show state changes immediately*/
+    if(!obj->rendered) return;
+
     lv_switch_t * sw = (lv_switch_t *)obj;
 
     uint32_t anim_dur_full = lv_obj_get_style_anim_duration(obj, LV_PART_MAIN);

@@ -128,7 +128,7 @@ lv_result_t lv_array_erase(lv_array_t * array, uint32_t start, uint32_t end)
     uint8_t * start_p = lv_array_at(array, start);
     uint8_t * remaining = start_p + (end - start) * array->element_size;
     uint32_t remaining_size = (array->size - end) * array->element_size;
-    lv_memcpy(start_p, remaining, remaining_size);
+    lv_memmove(start_p, remaining, remaining_size);
     array->size -= (end - start);
     lv_array_shrink(array);
     return LV_RESULT_OK;
@@ -210,41 +210,6 @@ lv_result_t lv_array_assign(lv_array_t * array, uint32_t index, const void * val
 
     lv_memcpy(data, value, array->element_size);
     return LV_RESULT_OK;
-}
-
-uint32_t lv_array_size(const lv_array_t * array)
-{
-    return array->size;
-}
-
-uint32_t lv_array_capacity(const lv_array_t * array)
-{
-    return array->capacity;
-}
-
-bool lv_array_is_empty(const lv_array_t * array)
-{
-    return array->size == 0;
-}
-
-bool lv_array_is_full(const lv_array_t * array)
-{
-    return array->size == array->capacity;
-}
-
-void lv_array_clear(lv_array_t * array)
-{
-    array->size = 0;
-}
-
-void * lv_array_front(const lv_array_t * array)
-{
-    return lv_array_at(array, 0);
-}
-
-void * lv_array_back(const lv_array_t * array)
-{
-    return lv_array_at(array, lv_array_size(array) - 1);
 }
 
 /**********************

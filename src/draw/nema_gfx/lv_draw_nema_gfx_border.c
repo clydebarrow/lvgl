@@ -25,7 +25,7 @@
  */
 
 /**
- * @file lv_draw_nema_gfx_fill.c
+ * @file lv_draw_nema_gfx_border.c
  *
  */
 
@@ -40,7 +40,7 @@
 /**********************
  *   GLOBAL FUNCTIONS
  **********************/
-void lv_draw_nema_gfx_border(lv_draw_unit_t * draw_unit, const lv_draw_border_dsc_t * dsc, const lv_area_t * coords)
+void lv_draw_nema_gfx_border(lv_draw_task_t * t, const lv_draw_border_dsc_t * dsc, const lv_area_t * coords)
 {
     if(dsc->opa <= LV_OPA_MIN)
         return;
@@ -49,9 +49,9 @@ void lv_draw_nema_gfx_border(lv_draw_unit_t * draw_unit, const lv_draw_border_ds
     if(dsc->side == LV_BORDER_SIDE_NONE)
         return;
 
-    lv_draw_nema_gfx_unit_t * draw_nema_gfx_unit = (lv_draw_nema_gfx_unit_t *)draw_unit;
+    lv_draw_nema_gfx_unit_t * draw_nema_gfx_unit = (lv_draw_nema_gfx_unit_t *)t->draw_unit;
 
-    lv_layer_t * layer = draw_unit->target_layer;
+    lv_layer_t * layer = t->target_layer;
     lv_area_t inward_coords;
     int32_t width = dsc->width;
 
@@ -64,7 +64,7 @@ void lv_draw_nema_gfx_border(lv_draw_unit_t * draw_unit, const lv_draw_border_ds
     lv_area_move(&inward_coords, -layer->buf_area.x1, -layer->buf_area.y1);
 
     lv_area_t clip_area;
-    lv_area_copy(&clip_area, draw_unit->clip_area);
+    lv_area_copy(&clip_area, &t->clip_area);
     lv_area_move(&clip_area, -layer->buf_area.x1, -layer->buf_area.y1);
 
     nema_set_clip(clip_area.x1, clip_area.y1, lv_area_get_width(&clip_area), lv_area_get_height(&clip_area));
@@ -76,9 +76,12 @@ void lv_draw_nema_gfx_border(lv_draw_unit_t * draw_unit, const lv_draw_border_ds
     lv_color_format_t dst_cf = layer->draw_buf->header.cf;
     uint32_t dst_nema_cf = lv_nemagfx_cf_to_nema(dst_cf);
 
+    /* the stride should be computed internally for NEMA_TSC images and images missing a stride value */
+    int32_t stride = (dst_cf >= LV_COLOR_FORMAT_NEMA_TSC_START && dst_cf <= LV_COLOR_FORMAT_NEMA_TSC_END) ?
+                     -1 : lv_area_get_width(&(layer->buf_area)) * lv_color_format_get_size(dst_cf);
+
     nema_bind_dst_tex((uintptr_t)NEMA_VIRT2PHYS(layer->draw_buf->data), lv_area_get_width(&(layer->buf_area)),
-                      lv_area_get_height(&(layer->buf_area)), dst_nema_cf,
-                      lv_area_get_width(&(layer->buf_area))*lv_color_format_get_size(dst_cf));
+                      lv_area_get_height(&(layer->buf_area)), dst_nema_cf, stride);
 
     /* Recalculate float Dimensions */
     float x1 = (float)coords->x1 + ((float)width / 2.0f) - (float)layer->buf_area.x1;

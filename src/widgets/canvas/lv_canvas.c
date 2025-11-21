@@ -18,7 +18,6 @@
 #include "../../draw/lv_draw_private.h"
 #include "../../core/lv_refr.h"
 #include "../../display/lv_display.h"
-#include "../../draw/sw/lv_draw_sw.h"
 #include "../../stdlib/lv_string.h"
 #include "../../misc/cache/lv_cache.h"
 /*********************
@@ -45,7 +44,7 @@ const lv_obj_class_t lv_canvas_class = {
     .destructor_cb = lv_canvas_destructor,
     .instance_size = sizeof(lv_canvas_t),
     .base_class = &lv_image_class,
-    .name = "canvas",
+    .name = "lv_canvas",
 };
 
 /**********************
@@ -92,6 +91,11 @@ void lv_canvas_set_draw_buf(lv_obj_t * obj, lv_draw_buf_t * draw_buf)
     LV_ASSERT_OBJ(obj, MY_CLASS);
     LV_ASSERT_NULL(draw_buf);
 
+    if(!draw_buf->handlers) {
+        LV_LOG_ERROR("draw_buf has no handlers, maybe not initialized");
+        return;
+    }
+
     lv_canvas_t * canvas = (lv_canvas_t *)obj;
     canvas->draw_buf = draw_buf;
 
@@ -129,6 +133,7 @@ void lv_canvas_set_px(lv_obj_t * obj, int32_t x, int32_t y, lv_color_t color, lv
                 break;
             case LV_COLOR_FORMAT_I8:
                 /*Indexed8 format is a easy case, process and return.*/
+                shift = 0;
                 *data = c_int;
             default:
                 return;
@@ -223,9 +228,9 @@ lv_color32_t lv_canvas_get_px(lv_obj_t * obj, int32_t x, int32_t y)
             break;
         case LV_COLOR_FORMAT_RGB565: {
                 lv_color16_t * c16 = (lv_color16_t *) px;
-                ret.red = (c16[x].red * 2106) >> 8;  /*To make it rounded*/
-                ret.green = (c16[x].green * 1037) >> 8;
-                ret.blue = (c16[x].blue * 2106) >> 8;
+                ret.red = (c16[0].red * 2106) >> 8;  /*To make it rounded*/
+                ret.green = (c16[0].green * 1037) >> 8;
+                ret.blue = (c16[0].blue * 2106) >> 8;
                 ret.alpha = 0xFF;
                 break;
             }
@@ -364,6 +369,7 @@ void lv_canvas_fill_bg(lv_obj_t * obj, lv_color_t color, lv_opa_t opa)
         }
     }
 
+    lv_draw_buf_flush_cache(canvas->draw_buf, NULL);
     lv_obj_invalidate(obj);
 }
 
@@ -371,21 +377,18 @@ void lv_canvas_init_layer(lv_obj_t * obj, lv_layer_t * layer)
 {
     LV_ASSERT_NULL(obj);
     LV_ASSERT_NULL(layer);
+    lv_layer_init(layer);
     lv_canvas_t * canvas = (lv_canvas_t *)obj;
     if(canvas->draw_buf == NULL) return;
 
     lv_image_header_t * header = &canvas->draw_buf->header;
     lv_area_t canvas_area = {0, 0, header->w - 1,  header->h - 1};
-    lv_memzero(layer, sizeof(*layer));
 
     layer->draw_buf = canvas->draw_buf;
     layer->color_format = header->cf;
     layer->buf_area = canvas_area;
     layer->_clip_area = canvas_area;
     layer->phy_clip_area = canvas_area;
-#if LV_DRAW_TRANSFORM_USE_MATRIX
-    lv_matrix_identity(&layer->matrix);
-#endif
 }
 
 void lv_canvas_finish_layer(lv_obj_t * canvas, lv_layer_t * layer)

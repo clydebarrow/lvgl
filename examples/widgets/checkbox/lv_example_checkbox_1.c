@@ -4,7 +4,7 @@
 static void event_handler(lv_event_t * e)
 {
     lv_event_code_t code = lv_event_get_code(e);
-    lv_obj_t * obj = lv_event_get_target(e);
+    lv_obj_t * obj = lv_event_get_target_obj(e);
     if(code == LV_EVENT_VALUE_CHANGED) {
         LV_UNUSED(obj);
         const char * txt = lv_checkbox_get_text(obj);
@@ -36,7 +36,8 @@ void lv_example_checkbox_1(void)
     lv_obj_add_event_cb(cb, event_handler, LV_EVENT_ALL, NULL);
 
     cb = lv_checkbox_create(lv_screen_active());
-    lv_obj_add_state(cb, LV_STATE_CHECKED | LV_STATE_DISABLED);
+    lv_obj_add_state(cb, LV_STATE_CHECKED);
+    lv_obj_add_state(cb, LV_STATE_DISABLED);
     lv_checkbox_set_text(cb, "Melon\nand a new line");
     lv_obj_add_event_cb(cb, event_handler, LV_EVENT_ALL, NULL);
 

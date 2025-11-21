@@ -13,8 +13,8 @@ extern "C" {
 /*********************
  *      INCLUDES
  *********************/
-
 #include "lv_image_decoder.h"
+#include "../misc/cache/lv_cache.h"
 
 /*********************
  *      DEFINES
@@ -46,6 +46,8 @@ struct _lv_image_decoder_t {
     lv_image_decoder_open_f_t open_cb;
     lv_image_decoder_get_area_cb_t get_area_cb;
     lv_image_decoder_close_f_t close_cb;
+
+    lv_image_decoder_custom_draw_t custom_draw_cb;
 
     const char * name;
 
