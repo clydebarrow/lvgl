@@ -1,12 +1,12 @@
 /**
- * @file lv_wl_window.c
+ * @file lv_wayland_window.c
  *
  */
 
 /*********************
  *      INCLUDES
  *********************/
-#include "lv_wl_window.h"
+#include "lv_wayland_window.h"
 
 #if LV_USE_WAYLAND
 
@@ -16,10 +16,10 @@
 #include <string.h>
 #include "lv_wayland_private.h"
 #include "lv_wayland_private.h"
-#include "lv_wl_pointer.h"
-#include "lv_wl_pointer_axis.h"
-#include "lv_wl_touch.h"
-#include "lv_wl_keyboard.h"
+#include "lv_wayland_pointer.h"
+#include "lv_wayland_pointer_axis.h"
+#include "lv_wayland_touch.h"
+#include "lv_wayland_keyboard.h"
 
 /*********************
  *      DEFINES
@@ -94,6 +94,7 @@ lv_display_t * lv_wayland_window_create(uint32_t hor_res, uint32_t ver_res, char
 
     lv_wayland_xdg_configure_surface(window);
 
+    lv_display_add_event_cb(window->lv_disp, res_changed_event, LV_EVENT_COLOR_FORMAT_CHANGED, NULL);
     lv_display_add_event_cb(window->lv_disp, res_changed_event, LV_EVENT_RESOLUTION_CHANGED, NULL);
     lv_display_add_event_cb(window->lv_disp, refr_start_event, LV_EVENT_REFR_START, NULL);
     lv_display_add_event_cb(window->lv_disp, refr_end_event, LV_EVENT_REFR_READY, NULL);
