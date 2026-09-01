@@ -101,13 +101,13 @@ void lv_example_style_transform_card(void)
     card_to_transform = card_create();
     lv_obj_center(card_to_transform);
 
-    int32_t disp_w = lv_display_get_horizontal_resolution(NULL);
+    int32_t disp_w = lv_display_get_horizontal_resolution(lv_display_get_default());
     lv_obj_t * arc = lv_arc_create(lv_screen_active());
     lv_obj_set_size(arc, disp_w - 20, disp_w - 20);
     lv_arc_set_range(arc, 0, 270);
     lv_arc_set_value(arc, 225);
     lv_obj_add_event_cb(arc, arc_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
-    lv_obj_add_flag(arc, LV_OBJ_FLAG_ADV_HITTEST);
+    lv_obj_set_adv_hittest(arc, true);
     lv_obj_center(arc);
 
     lv_obj_t * slider = lv_slider_create(lv_screen_active());
@@ -126,9 +126,9 @@ static lv_obj_t * card_create(void)
 {
     lv_obj_t * card = lv_obj_create(lv_screen_active());
     lv_obj_add_style(card, &style_card, 0);
-    lv_obj_remove_flag(card, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_remove_flag(card, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_remove_flag(card, LV_OBJ_FLAG_SCROLL_CHAIN_HOR);
+    lv_obj_set_clickable(card, false);
+    lv_obj_set_scrollable(card, false);
+    lv_obj_set_scroll_chain_hor(card, false);
 
     lv_obj_t * avatar = lv_image_create(card);
     lv_image_set_src(avatar, &img_transform_avatar_15);
@@ -141,7 +141,7 @@ static lv_obj_t * card_create(void)
     lv_obj_set_style_text_font(name, LV_FONT_DEFAULT, 0);
 
     lv_obj_t * btn = lv_button_create(card);
-    lv_obj_remove_flag(card, LV_OBJ_FLAG_SCROLL_CHAIN_HOR);
+    lv_obj_set_scroll_chain_hor(card, false);
     lv_obj_set_grid_cell(btn, LV_GRID_ALIGN_START, 2, 1, LV_GRID_ALIGN_CENTER, 3, 1);
     lv_obj_add_style(btn, &style_btn, 0);
 

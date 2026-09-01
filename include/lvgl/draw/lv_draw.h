@@ -90,6 +90,9 @@ typedef enum {
     /** The draw task is rendered. It will be removed from the draw task list of the layer
      * and freed automatically. */
     LV_DRAW_TASK_STATE_FINISHED,
+
+    /*Task cannot be completed. E.g. OOM during layer buf alloc*/
+    LV_DRAW_TASK_STATE_FAILED,
 } lv_draw_task_state_t;
 
 struct _lv_layer_t  {
@@ -98,6 +101,9 @@ struct _lv_layer_t  {
 
     /** Linked list of draw tasks */
     lv_draw_task_t * draw_task_head;
+
+    /** The display assigned to this layer*/
+    lv_display_t * display;
 
     /** Parent layer */
     lv_layer_t * parent;
@@ -143,6 +149,9 @@ struct _lv_layer_t  {
 
     /** Opacity of the layer */
     lv_opa_t opa;
+
+    /** true if LVGL is responsible for freeing `draw_buf`*/
+    bool buffer_owned;
 };
 
 typedef struct {
@@ -213,6 +222,7 @@ void * lv_draw_create_unit(size_t size);
  * Add an empty draw task to the draw task list of a layer.
  * @param layer     pointer to a layer
  * @param coords    the coordinates of the draw task
+ * @param type      the draw task type
  * @return          the created draw task which needs to be
  *                  further configured e.g. by added a draw descriptor
  */
@@ -328,7 +338,6 @@ lv_layer_t * lv_draw_layer_create(lv_layer_t * parent_layer, lv_color_format_t c
  * @param parent_layer      the parent layer to which the layer will be merged when it's rendered
  * @param color_format      the color format of the layer
  * @param area              the areas of the layer (absolute coordinates)
- * @return                  the new target_layer or NULL on error
  */
 void lv_draw_layer_init(lv_layer_t * layer, lv_layer_t * parent_layer, lv_color_format_t color_format,
                         const lv_area_t * area);
@@ -377,6 +386,25 @@ lv_layer_t * lv_draw_layer_create_drop_shadow(lv_layer_t * parent_layer, const l
 
 void lv_draw_layer_finish_drop_shadow(lv_layer_t * drop_shadow_layer, const lv_draw_dsc_base_t * base);
 
+
+
+/**
+ * Deallocate a buffer attached to this layer.
+ * @param layer             pointer to a layer
+ */
+void lv_draw_layer_dealloc_buf(lv_layer_t * layer);
+
+/**
+ * Deinitialize a layer, reverse operation of `lv_draw_layer_init`
+ * @param layer             pointer the layer to deinitialize
+ */
+void lv_draw_layer_deinit(lv_layer_t * layer);
+
+/**
+ * Delete a layer, reverse operation of `lv_draw_layer_create`
+ * @param layer             pointer the layer to delete
+ */
+void lv_draw_layer_delete(lv_layer_t * layer);
 
 /**********************
  *  GLOBAL VARIABLES

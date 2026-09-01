@@ -53,8 +53,6 @@ static lv_key_t keycode_xkb_to_lv(xkb_keysym_t xkb_key);
  *  STATIC VARIABLES
  **********************/
 
-static struct xkb_context * xkb_context;
-
 static const struct wl_keyboard_listener keyboard_listener = {
     .keymap      = keyboard_handle_keymap,
     .enter       = keyboard_handle_enter,
@@ -90,10 +88,9 @@ lv_indev_t * lv_wayland_keyboard_create(void)
 
 lv_indev_t * lv_wayland_get_keyboard(lv_display_t * display)
 {
+    LV_CHECK_ARG(display != NULL, return NULL);
     lv_wl_window_t * window = lv_display_get_driver_data(display);
-    if(!window) {
-        return NULL;
-    }
+    LV_CHECK_ARG_MSG(window != NULL, return NULL, "Invalid display");
     return window->lv_indev_keyboard;
 }
 
@@ -103,13 +100,16 @@ lv_indev_t * lv_wayland_get_keyboard(lv_display_t * display)
 
 lv_wl_seat_keyboard_t * lv_wayland_seat_keyboard_create(struct wl_seat * wl_seat)
 {
+    LV_ASSERT(wl_seat != NULL);
 
     struct wl_keyboard * keyboard = wl_seat_get_keyboard(wl_seat);
     if(!keyboard) {
         LV_LOG_WARN("Failed to get seat keyboard");
         return NULL;
     }
-    if(!xkb_context && !(xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS))) {
+
+    struct xkb_context * xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+    if(!xkb_context) {
         LV_LOG_WARN("Failed to create xkb context");
         return NULL;
     }
@@ -123,6 +123,7 @@ lv_wl_seat_keyboard_t * lv_wayland_seat_keyboard_create(struct wl_seat * wl_seat
     wl_keyboard_add_listener(keyboard, &keyboard_listener, NULL);
     wl_keyboard_set_user_data(keyboard, wl_seat_keyboard);
 
+    wl_seat_keyboard->xkb_context = xkb_context;
     wl_seat_keyboard->wl_keyboard = keyboard;
     lv_wayland_update_indevs(keyboard_read, wl_seat_keyboard);
 
@@ -131,6 +132,10 @@ lv_wl_seat_keyboard_t * lv_wayland_seat_keyboard_create(struct wl_seat * wl_seat
 void lv_wayland_seat_keyboard_delete(lv_wl_seat_keyboard_t * seat_keyboard)
 {
     lv_wayland_update_indevs(keyboard_read, NULL);
+    wl_keyboard_destroy(seat_keyboard->wl_keyboard);
+    xkb_context_unref(seat_keyboard->xkb_context);
+    xkb_keymap_unref(seat_keyboard->xkb_keymap);
+    xkb_state_unref(seat_keyboard->xkb_state);
     lv_free(seat_keyboard);
 }
 
@@ -140,6 +145,8 @@ void lv_wayland_seat_keyboard_delete(lv_wl_seat_keyboard_t * seat_keyboard)
 
 static void keyboard_read(lv_indev_t * indev, lv_indev_data_t * data)
 {
+    LV_ASSERT(indev != NULL);
+    LV_ASSERT(data != NULL);
     lv_wl_seat_keyboard_t * kbdata = lv_indev_get_driver_data(indev);
     if(!kbdata) {
         return;
@@ -167,7 +174,7 @@ static void keyboard_handle_keymap(void * data, struct wl_keyboard * keyboard, u
     }
 
     /* Set up XKB keymap */
-    struct xkb_keymap * keymap = xkb_keymap_new_from_string(xkb_context, map_str, XKB_KEYMAP_FORMAT_TEXT_V1, 0);
+    struct xkb_keymap * keymap = xkb_keymap_new_from_string(kbdata->xkb_context, map_str, XKB_KEYMAP_FORMAT_TEXT_V1, 0);
     munmap(map_str, size);
     close(fd);
 

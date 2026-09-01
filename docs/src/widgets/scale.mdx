@@ -1,15 +1,13 @@
 ---
 title: "Scale (lv_scale)"
+description: "Linear or circular scale with configurable range, ticks, labels, and color sections."
 ---
-
-<br />
-
-<hr />
 
 ## Overview
 
-Scale Widgets show linear or circular scales with configurable ranges, tick counts,
-placement, labeling, and subsections ([Sections](/widgets/scale)) with custom styling.
+The Scale widget shows linear or circular scales with configurable ranges,
+tick counts, placement, labeling, and subsections ([Sections](/widgets/scale))
+with custom styling.
 
 ## Mode
 
@@ -169,9 +167,12 @@ Relevant style properties per part:
 | Part | Properties |
 |---|---|
 | <ApiLink name="LV_PART_MAIN" /> (line) | `line_width`, `line_color`, `line_opa` |
-| <ApiLink name="LV_PART_MAIN" /> (arc) | `arc_width`, `arc_color`, `arc_opa`, `arc_rounded`, `arc_image_src` |
+| <ApiLink name="LV_PART_MAIN" /> (arc) | `arc_width`, `arc_color`, `arc_opa`, `arc_rounded`, `arc_image_src`, `pad_radial` |
 | <ApiLink name="LV_PART_ITEMS" /> / <ApiLink name="LV_PART_INDICATOR" /> | `line_width`, `line_color`, `line_opa` |
 | <ApiLink name="LV_PART_INDICATOR" /> labels | `text_color`, `text_opa`, `text_letter_space`, `text_font` |
+
+`pad_radial` applies only to sections drawn as an arc. Positive values move
+the section arc toward the center.
 
 ## Needles
 
@@ -210,27 +211,13 @@ Only integer subjects are supported.
 
 ## Events
 
-No special events are sent by Scale Widgets.
-
 In <ApiLink name="LV_EVENT_DRAW_TASK_ADDED" /> events, a major or minor line
 draw descriptor's members `id1` and `id2` will be the tick index and
 tick value, respectively. If the part is <ApiLink name="LV_PART_INDICATOR" />,
 it is a major tick. If the part is <ApiLink name="LV_PART_ITEMS" /> it is a
 minor tick.
 
-<Callout type="info" title="Further Reading">
 Learn more about [Events](/common-widget-features/events) emitted by all Widgets.
-
-Learn more about [events](/common-widget-features/events).
-</Callout>
-
-## Keys
-
-No *Keys* are processed by Scale Widgets.
-
-<Callout type="info" title="Further Reading">
-Learn more about [Keys](/main-modules/indev/keypad).
-</Callout>
 
 ## Showcase examples
 

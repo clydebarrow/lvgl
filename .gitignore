@@ -21,3 +21,6 @@ config.h
 defconfig
 env/*
 docs-venv
+tests/.ccache/
+tests/src/test_assets/**/generated
+build_check

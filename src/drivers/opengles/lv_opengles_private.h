@@ -144,13 +144,14 @@ void lv_opengles_render(const lv_opengles_render_params_t * params);
 
 /**
  * Render a texture using alternate blending mode, with red and blue channels flipped in the shader.
- * @param texture        OpenGL texture ID
- * @param texture_area   the area in the window to render the texture in
- * @param opa            opacity to blend the texture with existing contents
- * @param disp_w         width of the window/framebuffer being rendered to
- * @param disp_h         height of the window/framebuffer being rendered to
- * @param h_flip         horizontal flip
- * @param v_flip         vertical flip
+ * @param texture               OpenGL texture ID
+ * @param texture_area          the area in the window to render the texture in
+ * @param opa                   opacity to blend the texture with existing contents
+ * @param disp_w                width of the window/framebuffer being rendered to
+ * @param disp_h                height of the window/framebuffer being rendered to
+ * @param texture_clip_area     the area of the texture to draw
+ * @param h_flip                horizontal flip
+ * @param v_flip                vertical flip
  */
 void lv_opengles_render_texture_rbswap(unsigned int texture, const lv_area_t * texture_area, lv_opa_t opa,
                                        int32_t disp_w, int32_t disp_h, const lv_area_t * texture_clip_area,
@@ -167,6 +168,18 @@ void lv_opengles_regular_viewport(int32_t x, int32_t y, int32_t w, int32_t h);
 
 void lv_opengles_render_display(lv_display_t * display, const lv_opengles_render_params_t * params);
 
+
+/*
+ * Internal implementation of @ref lv_opengles_render_texture
+ */
+void lv_opengles_render_texture_internal(unsigned int texture, const lv_area_t * texture_area, lv_opa_t opa,
+                                         int32_t disp_w,
+                                         int32_t disp_h, const lv_area_t * texture_clip_area, bool h_flip, bool v_flip);
+
+/*
+ * Internal implementation of @ref lv_opengles_render_display_texture
+ */
+void lv_opengles_render_display_texture_internal(lv_display_t * display, bool h_flip, bool v_flip);
 /**********************
  *      MACROS
  **********************/

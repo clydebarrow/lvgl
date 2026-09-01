@@ -57,8 +57,6 @@ static void pointer_handle_axis(void * data, struct wl_pointer * wl_pointer, uin
  *  STATIC VARIABLES
  **********************/
 
-static struct wl_cursor_theme * cursor_theme = NULL;
-
 static const struct wl_pointer_listener pointer_listener = {
     .enter  = pointer_handle_enter,
     .leave  = pointer_handle_leave,
@@ -90,12 +88,11 @@ lv_indev_t * lv_wayland_pointer_create(void)
     return indev;
 }
 
-lv_indev_t * lv_wayland_get_pointer(lv_display_t * disp)
+lv_indev_t * lv_wayland_get_pointer(lv_display_t * display)
 {
-    lv_wl_window_t * window = lv_display_get_driver_data(disp);
-    if(!window) {
-        return NULL;
-    }
+    LV_CHECK_ARG(display != NULL, return NULL);
+    lv_wl_window_t * window = lv_display_get_driver_data(display);
+    LV_CHECK_ARG_MSG(window != NULL, return NULL, "Invalid display");
     return window->lv_indev_pointer;
 }
 
@@ -113,18 +110,19 @@ lv_indev_t * lv_wayland_pointer_axis_create(void)
 
 lv_indev_t * lv_wayland_get_pointeraxis(lv_display_t * display)
 {
+    LV_CHECK_ARG(display != NULL, return NULL);
     lv_wl_window_t * window = lv_display_get_driver_data(display);
-    if(!window) {
-        return NULL;
-    }
+    LV_CHECK_ARG_MSG(window != NULL, return NULL, "Invalid display");
     return window->lv_indev_pointeraxis;
 }
 
 lv_wl_seat_pointer_t * lv_wayland_seat_pointer_create(struct wl_seat * seat, struct wl_surface * surface)
 {
-    LV_ASSERT_NULL(seat);
-    LV_ASSERT_NULL(surface);
-    if(!cursor_theme && !(cursor_theme = wl_cursor_theme_load(NULL, 32, lv_wl_ctx.wl_shm))) {
+    LV_ASSERT(seat != NULL);
+    LV_ASSERT(surface != NULL);
+
+    struct wl_cursor_theme * cursor_theme = wl_cursor_theme_load(NULL, 32, lv_wl_ctx.wl_shm);
+    if(!cursor_theme) {
         LV_LOG_WARN("Failed to load cursor theme for pointer");
         return NULL;
     }
@@ -132,6 +130,7 @@ lv_wl_seat_pointer_t * lv_wayland_seat_pointer_create(struct wl_seat * seat, str
     struct wl_pointer * pointer = wl_seat_get_pointer(seat);
     if(!pointer) {
         LV_LOG_WARN("Failed to get seat pointer");
+        wl_cursor_theme_destroy(cursor_theme);
         return NULL;
     }
 
@@ -139,11 +138,14 @@ lv_wl_seat_pointer_t * lv_wayland_seat_pointer_create(struct wl_seat * seat, str
     LV_ASSERT_MALLOC(wl_seat_pointer);
     if(!wl_seat_pointer) {
         LV_LOG_WARN("Failed to allocate memory for wayland pointer");
+        wl_pointer_destroy(pointer);
+        wl_cursor_theme_destroy(cursor_theme);
         return NULL;
     }
     wl_pointer_add_listener(pointer, &pointer_listener, NULL);
     wl_pointer_set_user_data(pointer, wl_seat_pointer);
 
+    wl_seat_pointer->cursor_theme = cursor_theme;
     wl_seat_pointer->cursor_surface = surface;
     wl_seat_pointer->wl_pointer = pointer;
     lv_wayland_update_indevs(pointer_read, wl_seat_pointer);
@@ -157,6 +159,7 @@ void lv_wayland_seat_pointer_delete(lv_wl_seat_pointer_t * seat_pointer)
     lv_wayland_update_indevs(pointer_read, NULL);
     lv_wayland_update_indevs(pointeraxis_read, NULL);
     wl_pointer_destroy(seat_pointer->wl_pointer);
+    wl_cursor_theme_destroy(seat_pointer->cursor_theme);
     lv_free(seat_pointer);
 }
 
@@ -166,6 +169,8 @@ void lv_wayland_seat_pointer_delete(lv_wl_seat_pointer_t * seat_pointer)
 
 static void pointeraxis_read(lv_indev_t * indev, lv_indev_data_t * data)
 {
+    LV_ASSERT(indev != NULL);
+    LV_ASSERT(data != NULL);
     lv_wl_seat_pointer_t * seat_pointer = lv_indev_get_driver_data(indev);
     if(!seat_pointer) {
         return;
@@ -177,6 +182,8 @@ static void pointeraxis_read(lv_indev_t * indev, lv_indev_data_t * data)
 }
 static void pointer_read(lv_indev_t * indev, lv_indev_data_t * data)
 {
+    LV_ASSERT(indev != NULL);
+    LV_ASSERT(data != NULL);
     lv_wl_seat_pointer_t * seat_pointer = lv_indev_get_driver_data(indev);
 
     if(!seat_pointer) {
@@ -198,7 +205,7 @@ static void pointer_handle_enter(void * data, struct wl_pointer * pointer, uint3
     seat_pointer->point.x = pos_x;
     seat_pointer->point.y = pos_y;
 
-    struct wl_cursor * wl_cursor = wl_cursor_theme_get_cursor(cursor_theme, LV_WAYLAND_DEFAULT_CURSOR_NAME);
+    struct wl_cursor * wl_cursor = wl_cursor_theme_get_cursor(seat_pointer->cursor_theme, LV_WAYLAND_DEFAULT_CURSOR_NAME);
     struct wl_cursor_image * cursor_image = wl_cursor->images[0];
 
     wl_pointer_set_cursor(pointer, serial, seat_pointer->cursor_surface, cursor_image->hotspot_x, cursor_image->hotspot_y);
@@ -223,7 +230,7 @@ static void pointer_handle_motion(void * data, struct wl_pointer * pointer, uint
     LV_UNUSED(time);
 
     lv_wl_seat_pointer_t * seat_pointer = wl_pointer_get_user_data(pointer);
-    LV_ASSERT_NULL(seat_pointer);
+    LV_ASSERT(seat_pointer != NULL);
 
     seat_pointer->point.x = wl_fixed_to_int(sx);
     seat_pointer->point.y = wl_fixed_to_int(sy);
@@ -236,7 +243,7 @@ static void pointer_handle_button(void * data, struct wl_pointer * pointer, uint
     LV_UNUSED(serial);
     LV_UNUSED(time);
     lv_wl_seat_pointer_t * seat_pointer = wl_pointer_get_user_data(pointer);
-    LV_ASSERT_NULL(seat_pointer);
+    LV_ASSERT(seat_pointer != NULL);
     const lv_indev_state_t lv_state = (state == WL_POINTER_BUTTON_STATE_PRESSED) ?
                                       LV_INDEV_STATE_PRESSED :
                                       LV_INDEV_STATE_RELEASED;

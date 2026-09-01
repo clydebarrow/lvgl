@@ -1,6 +1,9 @@
 #include "../../lv_examples.h"
 #if LV_USE_GRIDNAV && LV_USE_LIST && LV_BUILD_EXAMPLES
 
+/*The navigated content is built from the deprecated `lv_list` widget.*/
+LV_DEPRECATIONS_IGNORE_BEGIN
+
 /**
  * @title Keypad navigation across two lists
  * @brief Side-by-side list widgets with distinct `lv_gridnav_ctrl_t` modes.
@@ -21,7 +24,10 @@ void lv_example_gridnav_2(void)
     lv_obj_set_size(list1, lv_pct(45), lv_pct(80));
     lv_obj_align(list1, LV_ALIGN_LEFT_MID, 5, 0);
     lv_obj_set_style_bg_color(list1, lv_palette_lighten(LV_PALETTE_BLUE, 5), LV_STATE_FOCUSED);
-    lv_group_add_obj(lv_group_get_default(), list1);
+    lv_group_t * g = lv_group_get_default();
+    if(g) {
+        lv_group_add_obj(g, list1);
+    }
 
     char buf[32];
     uint32_t i;
@@ -37,7 +43,9 @@ void lv_example_gridnav_2(void)
     lv_obj_set_size(list2, lv_pct(45), lv_pct(80));
     lv_obj_align(list2, LV_ALIGN_RIGHT_MID, -5, 0);
     lv_obj_set_style_bg_color(list2, lv_palette_lighten(LV_PALETTE_BLUE, 5), LV_STATE_FOCUSED);
-    lv_group_add_obj(lv_group_get_default(), list2);
+    if(g) {
+        lv_group_add_obj(g, list2);
+    }
 
     for(i = 0; i < 15; i++) {
         lv_snprintf(buf, sizeof(buf), "Folder %d", i + 1);
@@ -46,5 +54,7 @@ void lv_example_gridnav_2(void)
         lv_group_remove_obj(item);
     }
 }
+
+LV_DEPRECATIONS_IGNORE_END
 
 #endif

@@ -163,8 +163,8 @@ static HDC lv_windows_create_frame_buffer(
 {
     HDC frame_buffer_dc_handle = NULL;
 
-    LV_ASSERT_NULL(pixel_buffer);
-    LV_ASSERT_NULL(pixel_buffer_size);
+    LV_ASSERT(pixel_buffer != NULL);
+    LV_ASSERT(pixel_buffer_size != NULL);
 
     HDC window_dc_handle = GetDC(window_handle);
     if(window_dc_handle) {
@@ -191,7 +191,7 @@ static HDC lv_windows_create_frame_buffer(
         bitmap_info.bmiHeader.biHeight = -height;
         bitmap_info.bmiHeader.biPlanes = 1;
         bitmap_info.bmiHeader.biBitCount = lv_color_format_get_bpp(
-                                               LV_COLOR_FORMAT_NATIVE);
+                                               LV_COLOR_FORMAT_DEFAULT);
 #if (LV_COLOR_DEPTH == 32) || (LV_COLOR_DEPTH == 24)
         bitmap_info.bmiHeader.biCompression = BI_RGB;
 #elif (LV_COLOR_DEPTH == 16)
@@ -213,7 +213,7 @@ static HDC lv_windows_create_frame_buffer(
         if(hBitmap) {
             *pixel_buffer_size = width * height;
             *pixel_buffer_size *= lv_color_format_get_size(
-                                      LV_COLOR_FORMAT_NATIVE);
+                                      LV_COLOR_FORMAT_DEFAULT);
 
             DeleteObject(SelectObject(frame_buffer_dc_handle, hBitmap));
             DeleteObject(hBitmap);
@@ -230,7 +230,7 @@ static HDC lv_windows_create_frame_buffer(
 static void lv_windows_display_timer_callback(lv_timer_t * timer)
 {
     lv_windows_window_context_t * context = lv_timer_get_user_data(timer);
-    LV_ASSERT_NULL(context);
+    LV_ASSERT(context != NULL);
 
     if(!context->display_resolution_changed) {
         return;

@@ -108,8 +108,8 @@ lv_obj_t * lv_gltf_create(lv_obj_t * parent)
 
 lv_gltf_model_t * lv_gltf_load_model_from_file(lv_obj_t * obj, const char * path)
 {
-    LV_ASSERT_NULL(obj);
     LV_CHECK_OBJ(obj, MY_CLASS, return NULL);
+    LV_CHECK_ARG(path != NULL, return NULL);
     lv_gltf_t * viewer = (lv_gltf_t *)obj;
 
     if(!viewer->environment) {
@@ -125,8 +125,9 @@ lv_gltf_model_t * lv_gltf_load_model_from_file(lv_obj_t * obj, const char * path
 
 lv_gltf_model_t * lv_gltf_load_model_from_bytes(lv_obj_t * obj, const uint8_t * bytes, size_t len)
 {
-    LV_ASSERT_NULL(obj);
     LV_CHECK_OBJ(obj, MY_CLASS, return NULL);
+    LV_CHECK_ARG(bytes != NULL, return NULL);
+    LV_CHECK_ARG(len > 0, return NULL);
     lv_gltf_t * viewer = (lv_gltf_t *)obj;
 
     if(!viewer->environment) {
@@ -143,10 +144,7 @@ lv_gltf_model_t * lv_gltf_load_model_from_bytes(lv_obj_t * obj, const uint8_t * 
 lv_result_t lv_gltf_add_model(lv_obj_t * obj, lv_gltf_model_t * model)
 {
     LV_CHECK_OBJ(obj, MY_CLASS, return LV_RESULT_INVALID);
-    if(!model) {
-        return LV_RESULT_INVALID;
-    }
-
+    LV_CHECK_ARG(model != NULL, return LV_RESULT_INVALID);
     lv_gltf_t * viewer = (lv_gltf_t *)obj;
 
     if(!viewer->environment) {
@@ -158,20 +156,17 @@ lv_result_t lv_gltf_add_model(lv_obj_t * obj, lv_gltf_model_t * model)
     return add_model(viewer, model, false) != NULL ? LV_RESULT_OK : LV_RESULT_INVALID;
 }
 
-void lv_gltf_set_environment(lv_obj_t * obj, lv_gltf_environment_t * env)
+void lv_gltf_set_environment(lv_obj_t * obj, lv_gltf_environment_t * environment)
 {
     LV_CHECK_OBJ(obj, MY_CLASS, return);
+    LV_CHECK_ARG(environment != NULL, return);
     lv_gltf_t * gltf = (lv_gltf_t *)obj;
-    if(env == NULL) {
-        LV_LOG_WARN("Refusing to assign a NULL environment to the glTF object");
-        return;
-    }
 
     if(gltf->environment && gltf->owns_environment) {
         lv_gltf_environment_delete(gltf->environment);
         gltf->environment = NULL;
     }
-    gltf->environment = env;
+    gltf->environment = environment;
     gltf->owns_environment = false;
 }
 
@@ -198,6 +193,7 @@ lv_gltf_model_t * lv_gltf_get_model_by_index(const lv_obj_t * obj, size_t id)
 }
 lv_gltf_model_t * lv_gltf_get_primary_model(const lv_obj_t * obj)
 {
+    LV_CHECK_OBJ(obj, MY_CLASS, return NULL);
     return lv_gltf_get_model_by_index(obj, 0);
 }
 
@@ -347,20 +343,15 @@ void lv_gltf_set_camera(lv_obj_t * obj, uint32_t value)
 {
     LV_CHECK_OBJ(obj, MY_CLASS, return);
     lv_gltf_t * viewer = (lv_gltf_t *)obj;
-
-    if(lv_array_is_empty(&viewer->models)) {
-        return;
-    }
-
+    LV_CHECK_ARG(!lv_array_is_empty(&viewer->models), return);
 
     lv_gltf_model_data_t * modeld = (lv_gltf_model_data_t *)lv_array_at(&viewer->models, 0);
     LV_ASSERT_NULL(modeld);
     lv_gltf_model_t * model = modeld->model;
     LV_ASSERT_NULL(model);
 
-    if(value > model->asset.cameras.size()) {
-        return;
-    }
+    /* Index 0 is the viewer's own camera, 1 and up are the cameras of the model */
+    LV_CHECK_ARG(value <= model->asset.cameras.size(), return);
 
     model->camera = value;
     lv_obj_invalidate(obj);
@@ -448,16 +439,32 @@ uint32_t lv_gltf_get_background_blur(const lv_obj_t * obj)
 void lv_gltf_set_env_brightness(lv_obj_t * obj, uint32_t value)
 {
     LV_CHECK_OBJ(obj, MY_CLASS, return);
-    lv_gltf_t * viewer = (lv_gltf_t *)obj;
-    viewer->desc.env_pow = value / 100.;
-    lv_obj_invalidate(obj);
+    LV_LOG_DEPRECATED("use lv_gltf_set_environment_brightness() instead");
+    lv_gltf_set_environment_brightness(obj, (float)value / 100.0f);
 }
 
 uint32_t lv_gltf_get_env_brightness(const lv_obj_t * obj)
 {
     LV_CHECK_OBJ(obj, MY_CLASS, return 0);
+    LV_LOG_DEPRECATED("use lv_gltf_get_environment_brightness() instead");
+    float v = lv_gltf_get_environment_brightness(obj) * 100.0f;
+    if(v <= 0.0f) return 0;
+    return (uint32_t)((double)v + 0.5);
+}
+
+void lv_gltf_set_environment_brightness(lv_obj_t * obj, float value)
+{
+    LV_CHECK_OBJ(obj, MY_CLASS, return);
     lv_gltf_t * viewer = (lv_gltf_t *)obj;
-    return viewer->desc.env_pow * 100;
+    viewer->desc.env_pow = value;
+    lv_obj_invalidate(obj);
+}
+
+float lv_gltf_get_environment_brightness(const lv_obj_t * obj)
+{
+    LV_CHECK_OBJ(obj, MY_CLASS, return 0.f);
+    lv_gltf_t * viewer = (lv_gltf_t *)obj;
+    return viewer->desc.env_pow;
 }
 
 void lv_gltf_set_image_exposure(lv_obj_t * obj, float value)
@@ -478,10 +485,13 @@ void lv_gltf_recenter(lv_obj_t * obj, lv_gltf_model_t * model)
 {
     LV_CHECK_OBJ(obj, MY_CLASS, return);
     lv_gltf_t * viewer = (lv_gltf_t *)obj;
+    LV_CHECK_ARG(lv_array_size(&viewer->models) > 0, return);
+
     if(model == NULL) {
         LV_ASSERT(lv_array_size(&viewer->models) > 0);
         model = *(lv_gltf_model_t **)lv_array_at(&viewer->models, 0);
     }
+    LV_CHECK_ARG(model != NULL, return);
 
     const auto & center_position = lv_gltf_data_get_center(model);
     viewer->desc.focal_x = center_position[0];
@@ -492,6 +502,7 @@ void lv_gltf_recenter(lv_obj_t * obj, lv_gltf_model_t * model)
 lv_3dray_t lv_gltf_get_ray_from_2d_coordinate(lv_obj_t * obj, const lv_point_t * screen_pos)
 {
     LV_CHECK_OBJ(obj, MY_CLASS, return make_empty_ray());
+    LV_CHECK_ARG(screen_pos, return make_empty_ray());
     lv_gltf_t * viewer = (lv_gltf_t *)obj;
 
     float norm_mouse_x = (float)screen_pos->x / (float)(lv_obj_get_width(obj));
@@ -524,6 +535,9 @@ lv_3dray_t lv_gltf_get_ray_from_2d_coordinate(lv_obj_t * obj, const lv_point_t *
 lv_result_t lv_intersect_ray_with_plane(const lv_3dray_t * ray, const lv_3dplane_t * plane,
                                         lv_3dpoint_t * collision_point)
 {
+    LV_CHECK_ARG(ray != NULL, return LV_RESULT_INVALID);
+    LV_CHECK_ARG(plane != NULL, return LV_RESULT_INVALID);
+    LV_CHECK_ARG(collision_point != NULL, return LV_RESULT_INVALID);
     fastgltf::math::fvec3 plane_center = fastgltf::math::fvec3(plane->origin.x, plane->origin.y, plane->origin.z);
     fastgltf::math::fvec3 plane_normal = fastgltf::math::fvec3(plane->direction.x, plane->direction.y, plane->direction.z);
     fastgltf::math::fvec3 ray_start = fastgltf::math::fvec3(ray->origin.x, ray->origin.y, ray->origin.z);
@@ -566,10 +580,20 @@ lv_3dplane_t lv_gltf_get_current_view_plane(lv_obj_t * obj, float distance)
 lv_result_t lv_gltf_world_to_screen(lv_obj_t * obj, const lv_3dpoint_t world_pos, lv_point_t * screen_pos)
 {
     LV_CHECK_OBJ(obj, MY_CLASS, return LV_RESULT_INVALID);
+    LV_CHECK_ARG(screen_pos != NULL, return LV_RESULT_INVALID);
     lv_gltf_t * viewer = (lv_gltf_t *)obj;
 
     fastgltf::math::fvec4 world_position_h = fastgltf::math::fvec4(world_pos.x, world_pos.y, world_pos.z, 1.0f);
-    fastgltf::math::fvec4 clip_space_pos = viewer->projection_matrix * viewer->view_matrix * world_position_h;
+    fastgltf::math::fvec4 view_space_pos = viewer->view_matrix * world_position_h;
+
+    /* pointing behind the camera*/
+    if(view_space_pos[2] >= 0.0f) {
+        screen_pos->x = -1;
+        screen_pos->y = -1;
+        return LV_RESULT_INVALID;
+    }
+
+    fastgltf::math::fvec4 clip_space_pos = viewer->projection_matrix * view_space_pos;
 
     /* Check for perspective division (w must not be zero) */
     if(clip_space_pos[3] == 0.0f) {
@@ -704,11 +728,22 @@ static void lv_gltf_destructor(const lv_obj_class_t * class_p, lv_obj_t * obj)
 {
     LV_UNUSED(class_p);
     lv_gltf_t * view = (lv_gltf_t *)obj;
+    lv_gltf_view_render_deinit(view);
+    GL_CALL(glDeleteVertexArrays(1, &view->shader_manager.bg_vao));
+    const GLuint bg_buffers[2] = { view->shader_manager.bg_index_buf, view->shader_manager.bg_vertex_buf };
+    GL_CALL(glDeleteBuffers(2, bg_buffers));
     lv_opengl_shader_manager_deinit(&view->shader_manager);
 
     const size_t n = lv_array_size(&view->models);
     for(size_t i = 0; i < n; ++i) {
         lv_gltf_model_data_t * model_data = (lv_gltf_model_data_t *)lv_array_at(&view->models, i);
+
+        const size_t skin_texture_count = lv_array_size(&model_data->skin_textures);
+        for(size_t j = 0; j < skin_texture_count; ++j) {
+            GL_CALL(glDeleteTextures(1, (GLuint *)lv_array_at(&model_data->skin_textures, j)));
+        }
+        lv_array_deinit(&model_data->skin_textures);
+
         if(model_data->owned) {
             lv_gltf_model_delete(model_data->model);
         }
@@ -777,23 +812,22 @@ static void lv_gltf_parse_model(lv_gltf_t * viewer, lv_gltf_model_t * model)
         for(size_t mp = 0; mp < model->asset.meshes[mesh_index].primitives.size(); mp++) {
             auto & model_primitive = model->asset.meshes[mesh_index].primitives[mp];
             const auto & mappings = model_primitive.mappings;
-            ssize_t material_index =
+            size_t material_index =
                 (!mappings.empty() && mappings[viewer->state.material_variant]) ?
                 mappings[viewer->state.material_variant].value() + 1 :
                 ((model_primitive.materialIndex) ? (model_primitive.materialIndex.value() + 1) : 0);
-            if(material_index < 0) {
+            if(material_index == 0) {
                 lv_gltf_data_add_opaque_node_primitive(model, 0, &node, mp);
                 continue;
             }
             const fastgltf::Material & material = model->asset.materials[material_index - 1];
+            viewer->state.render_opaque_buffer |= material.transmission != nullptr;
 
-            viewer->state.render_opaque_buffer |= material.transmission != NULL;
-
-            if(material.alphaMode == fastgltf::AlphaMode::Blend || material.transmission != NULL) {
-                lv_gltf_data_add_blended_node_primitive(model, material_index + 1, &node, mp);
+            if(material.alphaMode == fastgltf::AlphaMode::Blend || material.transmission != nullptr) {
+                lv_gltf_data_add_blended_node_primitive(model, material_index, &node, mp);
             }
             else {
-                lv_gltf_data_add_opaque_node_primitive(model, material_index + 1, &node, mp);
+                lv_gltf_data_add_opaque_node_primitive(model, material_index, &node, mp);
             }
 
             lv_array_t defines;
@@ -850,7 +884,12 @@ static void setup_compile_and_load_bg_shader(lv_opengl_shader_manager_t * manage
                                                                                 vert_shader_hash);
 
     manager->bg_program = lv_opengl_shader_program_get_id(program);
-    setup_background_environment(manager->bg_program, &manager->bg_vao, &manager->bg_index_buf, &manager->bg_vertex_buf);
+    /* This runs for every model added to the view, but the cube the background is drawn
+     * with never changes, so it is only built once */
+    if(manager->bg_vao == 0) {
+        setup_background_environment(manager->bg_program, &manager->bg_vao, &manager->bg_index_buf,
+                                     &manager->bg_vertex_buf);
+    }
 }
 
 
@@ -894,7 +933,7 @@ static void display_refr_end_event_cb(lv_event_t * e)
         LV_ASSERT_NULL(modeld);
         lv_gltf_model_t * model = modeld->model;
         LV_ASSERT_NULL(model);
-        lv_gltf_model_send_new_values(modeld->model);
+        lv_gltf_model_send_new_values(model);
     }
 }
 

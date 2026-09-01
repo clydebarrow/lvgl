@@ -26,7 +26,10 @@ void lv_example_gridnav_1(void)
     lv_obj_set_size(cont1, lv_pct(50), lv_pct(100));
 
     /*Only the container needs to be in a group*/
-    lv_group_add_obj(lv_group_get_default(), cont1);
+    lv_group_t * g = lv_group_get_default();
+    if(g) {
+        lv_group_add_obj(g, cont1);
+    }
 
     lv_obj_t * label = lv_label_create(cont1);
     lv_label_set_text_fmt(label, "No rollover");
@@ -35,7 +38,7 @@ void lv_example_gridnav_1(void)
     for(i = 0; i < 10; i++) {
         lv_obj_t * obj = lv_button_create(cont1);
         lv_obj_set_size(obj, 70, LV_SIZE_CONTENT);
-        lv_obj_add_flag(obj, LV_OBJ_FLAG_CHECKABLE);
+        lv_obj_set_checkable(obj, true);
         lv_group_remove_obj(obj);   /*Not needed, we use the gridnav instead*/
 
         label = lv_label_create(obj);
@@ -56,7 +59,9 @@ void lv_example_gridnav_1(void)
     lv_label_set_text_fmt(label, "Rollover\nUse tab to focus the other container");
 
     /*Only the container needs to be in a group*/
-    lv_group_add_obj(lv_group_get_default(), cont2);
+    if(g) {
+        lv_group_add_obj(g, cont2);
+    }
 
     /*Add and place some children manually*/
     lv_obj_t * ta = lv_textarea_create(cont2);

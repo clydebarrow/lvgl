@@ -17,6 +17,7 @@
 #include "../../misc/lv_area_private.h"
 #include "../../lvgl_public.h"
 #include "../../misc/lv_text_private.h"
+#include "../../core/lv_obj_style_internal.h"
 
 #if LV_USE_FLOAT
     #include <math.h>
@@ -106,6 +107,10 @@ void lv_arclabel_set_text(lv_obj_t * obj, const char * text)
 
     /*If text is NULL then just refresh with the current text*/
     if(text == NULL) text = arclabel->text;
+    if(text == NULL) {
+        lv_obj_invalidate(obj);
+        return;
+    }
 
     const size_t text_len = lv_strlen(text) + 1;
 
@@ -138,7 +143,6 @@ void lv_arclabel_set_text(lv_obj_t * obj, const char * text)
 void lv_arclabel_set_text_fmt(lv_obj_t * obj, const char * fmt, ...)
 {
     LV_CHECK_OBJ(obj, MY_CLASS, return);
-    LV_ASSERT_NULL(fmt);
 
     lv_arclabel_t * arclabel = (lv_arclabel_t *)obj;
 
@@ -377,6 +381,7 @@ static void lv_arclabel_constructor(const lv_obj_class_t * class_p, lv_obj_t * o
 {
     LV_UNUSED(class_p);
     LV_TRACE_OBJ_CREATE("begin");
+    LV_ASSERT(obj != NULL);
 
     lv_arclabel_t * arc = (lv_arclabel_t *)obj;
 
@@ -389,7 +394,9 @@ static void lv_arclabel_constructor(const lv_obj_class_t * class_p, lv_obj_t * o
 
     lv_arclabel_set_text_static(obj, LV_ARCLABEL_DEFAULT_TEXT);
 
-    lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLL_CHAIN | LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_clickable(obj, false);
+    lv_obj_set_scroll_chain(obj, false);
+    lv_obj_set_scrollable(obj, false);
 
     LV_TRACE_OBJ_CREATE("finished");
 }
@@ -397,6 +404,7 @@ static void lv_arclabel_constructor(const lv_obj_class_t * class_p, lv_obj_t * o
 static void lv_arclabel_event(const lv_obj_class_t * class_p, lv_event_t * e)
 {
     LV_UNUSED(class_p);
+    LV_ASSERT(e != NULL);
 
     /*Call the ancestor's event handler*/
     const lv_result_t res = lv_obj_event_base(MY_CLASS, e);
@@ -411,7 +419,9 @@ static void lv_arclabel_event(const lv_obj_class_t * class_p, lv_event_t * e)
 
 static void arclabel_draw_main(lv_event_t * e)
 {
+    LV_ASSERT(e != NULL);
     lv_obj_t * obj = lv_event_get_current_target(e);
+    LV_ASSERT(obj != NULL);
     lv_arclabel_t * arclabel = (lv_arclabel_t *)obj;
 
     const char * text = arclabel->text;
@@ -422,10 +432,10 @@ static void arclabel_draw_main(lv_event_t * e)
 
     lv_layer_t * layer = lv_event_get_layer(e);
 
-    const lv_font_t * font = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
-    const lv_color_t color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
-    const lv_opa_t opa = LV_OPA_MIX2(layer->opa, lv_obj_get_style_text_opa(obj, LV_PART_MAIN));
-    const int32_t letter_space = lv_obj_get_style_text_letter_space(obj, LV_PART_MAIN);
+    const lv_font_t * font = lv_obj_get_style_text_font_internal(obj, LV_PART_MAIN);
+    const lv_color_t color = lv_obj_get_style_text_color_internal(obj, LV_PART_MAIN);
+    const lv_opa_t opa = LV_OPA_MIX2(layer->opa, lv_obj_get_style_text_opa_internal(obj, LV_PART_MAIN));
+    const int32_t letter_space = lv_obj_get_style_text_letter_space_internal(obj, LV_PART_MAIN);
 
     int32_t arc_r = 0;
     bool need_ellipsis = false;
@@ -560,8 +570,8 @@ static lv_value_precise_t arclabel_calc_arc_text_total_angle(lv_obj_t * obj, int
     lv_area_t coords;
     lv_obj_get_content_coords(obj, &coords);
 
-    const lv_font_t * font = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
-    const int32_t letter_space = lv_obj_get_style_text_letter_space(obj, LV_PART_MAIN);
+    const lv_font_t * font = lv_obj_get_style_text_font_internal(obj, LV_PART_MAIN);
+    const int32_t letter_space = lv_obj_get_style_text_letter_space_internal(obj, LV_PART_MAIN);
 
     const int32_t line_height = font->line_height;
     const int32_t base_line = font->base_line;

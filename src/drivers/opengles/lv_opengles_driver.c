@@ -96,9 +96,11 @@ static int shader_location[] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
  *   GLOBAL FUNCTIONS
  **********************/
 
-void lv_opengles_init(void)
+lv_result_t lv_opengles_init(void)
 {
-    if(is_init) return;
+    if(is_init) {
+        return LV_RESULT_OK;
+    }
 
     lv_opengles_enable_blending(false);
 
@@ -115,7 +117,13 @@ void lv_opengles_init(void)
     lv_opengles_index_buffer_init(indices, 6);
 
     lv_result_t res = lv_opengles_shader_init();
-    LV_ASSERT_MSG(res == LV_RESULT_OK, "Failed to initialize shaders");
+    if(res != LV_RESULT_OK) {
+        lv_opengles_index_buffer_deinit();
+        lv_opengles_vertex_array_deinit();
+        lv_opengles_vertex_buffer_deinit();
+        LV_LOG_ERROR("failed to initialize shaders");
+        return LV_RESULT_INVALID;
+    }
 
     lv_opengles_shader_bind();
 
@@ -130,6 +138,7 @@ void lv_opengles_init(void)
 #endif /*LV_USE_DRAW_NANOVG*/
 
     is_init = true;
+    return LV_RESULT_OK;
 }
 
 void lv_opengles_deinit(void)
@@ -146,13 +155,25 @@ void lv_opengles_deinit(void)
 
 void lv_opengles_render_params_init(lv_opengles_render_params_t * params)
 {
-    LV_ASSERT_NULL(params);
+    LV_ASSERT(params != NULL);
     lv_memzero(params, sizeof(lv_opengles_render_params_t));
 }
 
 void lv_opengles_render_texture(unsigned int texture, const lv_area_t * texture_area, lv_opa_t opa, int32_t disp_w,
                                 int32_t disp_h, const lv_area_t * texture_clip_area, bool h_flip, bool v_flip)
 {
+    LV_CHECK_ARG(texture_area != NULL, return);
+    LV_CHECK_ARG(texture_clip_area != NULL, return);
+    lv_opengles_render_texture_internal(texture, texture_area, opa, disp_w, disp_h, texture_clip_area, h_flip, v_flip);
+}
+
+void lv_opengles_render_texture_internal(unsigned int texture, const lv_area_t * texture_area, lv_opa_t opa,
+                                         int32_t disp_w,
+                                         int32_t disp_h, const lv_area_t * texture_clip_area, bool h_flip, bool v_flip)
+{
+    LV_ASSERT(texture_area != NULL);
+    LV_ASSERT(texture_clip_area != NULL);
+
     LV_PROFILER_DRAW_BEGIN;
     lv_opengles_render_params_t params;
     lv_opengles_render_params_init(&params);
@@ -172,6 +193,8 @@ void lv_opengles_render_texture_rbswap(unsigned int texture, const lv_area_t * t
                                        int32_t disp_w,
                                        int32_t disp_h, const lv_area_t * texture_clip_area, bool h_flip, bool v_flip)
 {
+    LV_ASSERT(texture_area != NULL);
+    LV_ASSERT(texture_clip_area != NULL);
     LV_PROFILER_DRAW_BEGIN;
     lv_opengles_render_params_t params;
     lv_opengles_render_params_init(&params);
@@ -190,6 +213,8 @@ void lv_opengles_render_texture_rbswap(unsigned int texture, const lv_area_t * t
 
 void lv_opengles_render_fill(lv_color_t color, const lv_area_t * area, lv_opa_t opa, int32_t disp_w, int32_t disp_h)
 {
+    LV_CHECK_ARG(area != NULL, return);
+
     LV_PROFILER_DRAW_BEGIN;
     lv_opengles_render_params_t params;
     lv_opengles_render_params_init(&params);
@@ -206,6 +231,8 @@ void lv_opengles_render_fill(lv_color_t color, const lv_area_t * area, lv_opa_t 
 
 void lv_opengles_render_display(lv_display_t * display, const lv_opengles_render_params_t * params)
 {
+    LV_ASSERT(display != NULL);
+    LV_ASSERT(params != NULL);
     LV_PROFILER_DRAW_BEGIN;
     unsigned int texture = (lv_uintptr_t)display->layer_head->user_data;
     GL_CALL(glActiveTexture(GL_TEXTURE0));
@@ -248,7 +275,13 @@ void lv_opengles_render_display(lv_display_t * display, const lv_opengles_render
 void lv_opengles_render_display_texture(lv_display_t * display, bool h_flip, bool v_flip)
 {
     /*TODO: Deprecate this function and make lv_opengles_render_display public instead*/
+    LV_CHECK_ARG(display != NULL, return);
+    lv_opengles_render_display_texture_internal(display, h_flip, v_flip);
+}
 
+void lv_opengles_render_display_texture_internal(lv_display_t * display, bool h_flip, bool v_flip)
+{
+    LV_ASSERT(display != NULL);
     lv_opengles_render_params_t params = {
         .v_flip = v_flip,
         .h_flip = h_flip,
@@ -291,7 +324,7 @@ void lv_opengles_reinit_state(void)
 
 void lv_opengles_render(const lv_opengles_render_params_t * params)
 {
-    LV_ASSERT_NULL(params);
+    LV_ASSERT(params != NULL);
     LV_PROFILER_DRAW_BEGIN;
     lv_area_t intersection;
     if(!lv_area_intersect(&intersection, params->texture_area, params->texture_clip_area)) {

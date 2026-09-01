@@ -13,14 +13,6 @@
 
 #include "lv_draw_sw_blend_private.h"
 
-#if LV_USE_DRAW_SW_ASM == LV_DRAW_SW_ASM_NEON
-    #include "neon/lv_blend_neon.h"
-#elif LV_USE_DRAW_SW_ASM == LV_DRAW_SW_ASM_HELIUM
-    #include "helium/lv_blend_helium.h"
-#elif LV_USE_DRAW_SW_ASM == LV_DRAW_SW_ASM_CUSTOM
-    #include LV_DRAW_SW_ASM_CUSTOM_INCLUDE
-#endif
-
 /*********************
  *      DEFINES
  *********************/
@@ -239,13 +231,8 @@ static inline void * /* LV_ATTRIBUTE_FAST_MEM */ drawbuf_next_row(const void * b
  * Supports normal fill, fill with opacity, fill with mask, and fill with mask and opacity.
  * dest_buf and color have native color depth. (RGB565, RGB888, XRGB8888)
  * The background (dest_buf) cannot have alpha channel
- * @param dest_buf
- * @param dest_area
- * @param dest_stride
- * @param color
- * @param opa
- * @param mask
- * @param mask_stride
+ * @param dsc            the fill descriptor holding the destination buffer, area and
+ *                       stride, the fill color, the opacity and the optional mask
  */
 void LV_ATTRIBUTE_FAST_MEM lv_draw_sw_blend_color_to_rgb565(lv_draw_sw_blend_fill_dsc_t * dsc)
 {
@@ -948,7 +935,7 @@ static void LV_ATTRIBUTE_FAST_MEM rgb565_swapped_image_blend(lv_draw_sw_blend_im
                 uint32_t line_in_bytes = w * 2;
                 for(y = 0; y < h; y++) {
                     lv_memcpy(dest_buf_u16, src_buf_u16, line_in_bytes);
-                    lv_draw_sw_rgb565_swap((uint8_t *) dest_buf_u16, w);
+                    lv_draw_rgb565_swap((uint8_t *) dest_buf_u16, w);
                     dest_buf_u16 = drawbuf_next_row(dest_buf_u16, dest_stride);
                     src_buf_u16 = drawbuf_next_row(src_buf_u16, src_stride);
                 }
