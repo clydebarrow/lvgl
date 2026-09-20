@@ -242,7 +242,7 @@ void lv_draw_image_normal_helper(lv_draw_task_t * t, const lv_draw_image_dsc_t *
     }
 
     lv_area_t draw_area;
-    lv_area_copy(&draw_area, coords);
+    draw_area = *coords;
     if(draw_dsc->rotation || draw_dsc->scale_x != LV_SCALE_NONE || draw_dsc->scale_y != LV_SCALE_NONE) {
         int32_t w = lv_area_get_width(coords);
         int32_t h = lv_area_get_height(coords);
@@ -380,6 +380,11 @@ static void img_decode_and_draw(lv_draw_task_t * t, const lv_draw_image_dsc_t * 
     }
     /*Draw in smaller pieces*/
     else {
+        if(draw_dsc->rotation != 0 || draw_dsc->scale_x != LV_SCALE_NONE || draw_dsc->scale_y != LV_SCALE_NONE) {
+            LV_LOG_WARN("Partially decoded images cannot be transformed");
+            return;
+        }
+
         lv_area_t relative_full_area_to_decode = *clipped_img_area;
         lv_area_move(&relative_full_area_to_decode, -img_area->x1, -img_area->y1);
         lv_area_t tmp;

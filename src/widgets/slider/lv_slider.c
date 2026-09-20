@@ -302,20 +302,23 @@ static void lv_slider_event(const lv_obj_class_t * class_p, lv_event_t * e)
 
         /*Ordinary slider: was the knob area hit?*/
         lv_area_t a;
-        lv_area_copy(&a, &slider->right_knob_area);
+        a = slider->right_knob_area;
         lv_area_increase(&a, ext_click_area, ext_click_area);
         info->res = lv_area_is_point_on(&a, info->point, 0);
 
         /*There's still a chance that there is a hit if there is another knob*/
         if((info->res == false) && (type == LV_SLIDER_MODE_RANGE)) {
-            lv_area_copy(&a, &slider->left_knob_area);
+            a = slider->left_knob_area;
             lv_area_increase(&a, ext_click_area, ext_click_area);
             info->res = lv_area_is_point_on(&a, info->point, 0);
         }
     }
     else if(code == LV_EVENT_PRESSED) {
         /*Save the pressed coordinates*/
-        lv_indev_get_point(lv_indev_active(), &slider->pressed_point);
+        lv_indev_t * indev = lv_event_get_indev(e);
+        slider->pressed_point.x = 0;
+        slider->pressed_point.y = 0;
+        if(indev != NULL) lv_indev_get_point(indev, &slider->pressed_point);
         lv_obj_transform_point(obj, &slider->pressed_point, LV_OBJ_POINT_TRANSFORM_FLAG_INVERSE_RECURSIVE);
     }
     else if(code == LV_EVENT_PRESSING) {
@@ -330,8 +333,9 @@ static void lv_slider_event(const lv_obj_class_t * class_p, lv_event_t * e)
 
         /*Leave edit mode if released. (No need to wait for LONG_PRESS)*/
         lv_group_t * g   = lv_obj_get_group(obj);
-        bool editing     = lv_group_get_editing(g);
-        lv_indev_type_t indev_type = lv_indev_get_type(lv_indev_active());
+        bool editing     = g != NULL && lv_group_get_editing(g);
+        lv_indev_t * indev = lv_event_get_indev(e);
+        lv_indev_type_t indev_type = indev != NULL ? lv_indev_get_type(indev) : LV_INDEV_TYPE_NONE;
         if(indev_type == LV_INDEV_TYPE_ENCODER) {
             if(editing) {
                 if(lv_slider_get_mode(obj) == LV_SLIDER_MODE_RANGE) {
@@ -352,7 +356,8 @@ static void lv_slider_event(const lv_obj_class_t * class_p, lv_event_t * e)
         }
     }
     else if(code == LV_EVENT_FOCUSED) {
-        lv_indev_type_t indev_type = lv_indev_get_type(lv_indev_active());
+        lv_indev_t * indev = lv_indev_active();
+        lv_indev_type_t indev_type = indev != NULL ? lv_indev_get_type(indev) : LV_INDEV_TYPE_NONE;
         if(indev_type == LV_INDEV_TYPE_ENCODER || indev_type == LV_INDEV_TYPE_KEYPAD) {
             slider->left_knob_focus = 0;
         }
@@ -455,7 +460,7 @@ static void draw_knob(lv_event_t * e)
     /* Update knob area with knob style */
     position_knob(obj, &knob_area, knob_size, is_horizontal);
     /* Update right knob area with calculated knob area */
-    lv_area_copy(&slider->right_knob_area, &knob_area);
+    slider->right_knob_area = knob_area;
 
     if(lv_slider_get_mode(obj) != LV_SLIDER_MODE_RANGE) {
         lv_draw_rect(layer, &knob_rect_dsc, &slider->right_knob_area);
@@ -476,7 +481,7 @@ static void draw_knob(lv_event_t * e)
             knob_area.y1 = LV_SLIDER_KNOB_COORD_VERTICAL(!is_reversed, slider->bar.indic_area);
         }
         position_knob(obj, &knob_area, knob_size, is_horizontal);
-        lv_area_copy(&slider->left_knob_area, &knob_area);
+        slider->left_knob_area = knob_area;
 
         lv_memcpy(&knob_rect_dsc, &knob_rect_dsc_tmp, sizeof(lv_draw_rect_dsc_t));
 
@@ -531,13 +536,14 @@ static void drag_start(lv_obj_t * obj)
     LV_ASSERT(obj != NULL);
     lv_slider_t * slider = (lv_slider_t *)obj;
     lv_slider_mode_t mode = lv_slider_get_mode(obj);
-    lv_point_t p;
+    lv_point_t p = { 0, 0 };
     slider->dragging = true;
     if(mode == LV_SLIDER_MODE_NORMAL || mode == LV_SLIDER_MODE_SYMMETRICAL) {
         slider->value_to_set = &slider->bar.cur_value;
     }
     else if(mode == LV_SLIDER_MODE_RANGE) {
-        lv_indev_get_point(lv_indev_active(), &p);
+        lv_indev_t * indev = lv_indev_active();
+        if(indev != NULL) lv_indev_get_point(indev, &p);
         lv_obj_transform_point(obj, &p, LV_OBJ_POINT_TRANSFORM_FLAG_INVERSE_RECURSIVE);
         const bool is_rtl = LV_BASE_DIR_RTL == lv_obj_get_style_base_dir_internal(obj, LV_PART_MAIN);
         const bool is_horizontal = is_slider_horizontal(obj);
@@ -596,6 +602,7 @@ static void update_knob_pos(lv_obj_t * obj, bool check_drag)
     LV_ASSERT(obj != NULL);
     lv_slider_t * slider = (lv_slider_t *)obj;
     lv_indev_t * indev = lv_indev_active();
+    if(indev == NULL) return;
     if(lv_indev_get_type(indev) != LV_INDEV_TYPE_POINTER)
         return;
     if(lv_indev_get_scroll_obj(indev) != NULL && !slider->dragging)

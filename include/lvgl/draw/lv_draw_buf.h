@@ -88,6 +88,8 @@ typedef void (*lv_draw_buf_cache_operation_cb_t)(const lv_draw_buf_t * draw_buf,
 
 typedef uint32_t (*lv_draw_buf_width_to_stride_cb_t)(uint32_t w, lv_color_format_t color_format);
 
+typedef void (*lv_draw_buf_clear_cb_t)(lv_draw_buf_t * draw_buf, const lv_area_t * a, lv_layer_t * layer);
+
 struct _lv_draw_buf_t {
     lv_image_header_t header;
     uint32_t data_size;       /**< Total buf size in bytes */
@@ -329,30 +331,21 @@ lv_result_t lv_draw_buf_premultiply(lv_draw_buf_t * draw_buf);
  * @param flag      the flag to check
  * @return true: the flag is set, false: the flag is not set
  */
-static inline bool lv_draw_buf_has_flag(const lv_draw_buf_t * draw_buf, lv_image_flags_t flag)
-{
-    return draw_buf->header.flags & flag;
-}
+bool lv_draw_buf_has_flag(const lv_draw_buf_t * draw_buf, lv_image_flags_t flag);
 
 /**
  * Set a flag to a draw buffer.
  * @param draw_buf  pointer to a draw buffer
  * @param flag      the flag to set
  */
-static inline void lv_draw_buf_set_flag(lv_draw_buf_t * draw_buf, lv_image_flags_t flag)
-{
-    draw_buf->header.flags |= flag;
-}
+void lv_draw_buf_set_flag(lv_draw_buf_t * draw_buf, lv_image_flags_t flag);
 
 /**
  * Clear a flag from a draw buffer.
  * @param draw_buf  pointer to a draw buffer
  * @param flag      the flag to clear
  */
-static inline void lv_draw_buf_clear_flag(lv_draw_buf_t * draw_buf, lv_image_flags_t flag)
-{
-    draw_buf->header.flags &= ~flag;
-}
+void lv_draw_buf_clear_flag(lv_draw_buf_t * draw_buf, lv_image_flags_t flag);
 
 /**
  * As of now, draw buf share same definition as `lv_image_dsc_t`.

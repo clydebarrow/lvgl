@@ -48,7 +48,11 @@ lv_display_t * lv_wayland_window_create(uint32_t hor_res, uint32_t ver_res, char
 {
     LV_CHECK_ARG(title != NULL, return NULL);
 
-    lv_wayland_init();
+    lv_result_t res = lv_wayland_init();
+    if(res != LV_RESULT_OK) {
+        return NULL;
+    }
+
     if(close_cb) {
         LV_LOG_DEPRECATED("'lv_wayland_display_close_cb_t' is deprecated and will be removed in the next release. "
                           "Bind an LV_EVENT_DELETE to the display returned by `lv_wayland_window_create` instead.");
@@ -85,9 +89,9 @@ lv_display_t * lv_wayland_window_create(uint32_t hor_res, uint32_t ver_res, char
     lv_display_set_driver_data(window->lv_disp, window);
 
     /* Initialize display driver */
-    lv_result_t res = lv_wayland_backend_init_display(&window->backend_ddata,
-                                                      window->lv_disp, hor_res,
-                                                      ver_res);
+    res = lv_wayland_backend_init_display(&window->backend_ddata,
+                                          window->lv_disp, hor_res,
+                                          ver_res);
     if(res != LV_RESULT_OK) {
         LV_LOG_ERROR("Failed to create display");
         goto init_display_err;
@@ -196,12 +200,17 @@ void lv_wayland_window_set_maximized(lv_display_t * display, bool maximized)
     LV_CHECK_ARG(display != NULL, return);
     lv_wl_window_t * window = lv_display_get_driver_data(display);
     LV_CHECK_ARG_MSG(window != NULL, return, "Invalid display");
-    if(window->maximized == maximized) {
-        return;
-    }
     lv_wayland_xdg_set_maximized(&window->xdg, maximized);
-    window->maximized = maximized;
 }
+
+bool lv_wayland_window_is_maximized(lv_display_t * display)
+{
+    LV_CHECK_ARG(display != NULL, return false);
+    lv_wl_window_t * window = lv_display_get_driver_data(display);
+    LV_CHECK_ARG_MSG(window != NULL, return false, "Invalid display");
+    return window->maximized;
+}
+
 void lv_wayland_window_set_minimized(lv_display_t * display)
 {
     LV_CHECK_ARG(display != NULL, return);
@@ -210,19 +219,25 @@ void lv_wayland_window_set_minimized(lv_display_t * display)
     lv_wayland_xdg_set_minimized(&window->xdg);
 }
 
-void lv_wayland_assign_physical_display(lv_display_t * display, uint8_t phys_display)
+void lv_wayland_window_set_physical_display(lv_display_t * display, uint8_t phys_display)
 {
     LV_CHECK_ARG(display != NULL, return);
     lv_wl_window_t * window = lv_display_get_driver_data(display);
     LV_CHECK_ARG_MSG(window != NULL, return, "Invalid display");
-    LV_CHECK_ARG_FORMAT_MSG(phys_display < lv_wl_ctx.wl_output_count, return,
-                            "Invalid display number '%d'. Expected '0'..'%d'",
+    LV_CHECK_ARG_FORMAT_MSG(phys_display == LV_WAYLAND_PHYSICAL_DISPLAY_ANY ||
+                            phys_display < lv_wl_ctx.wl_output_count, return,
+                            "Invalid display number '%d'. Expected '0'..'%d' or LV_WAYLAND_PHYSICAL_DISPLAY_ANY",
                             phys_display, lv_wl_ctx.wl_output_count - 1);
 
-    window->physical_output = lv_wl_ctx.physical_outputs[phys_display].wl_output;
+    if(phys_display == LV_WAYLAND_PHYSICAL_DISPLAY_ANY) {
+        window->physical_output = NULL;
+    }
+    else {
+        window->physical_output = lv_wl_ctx.physical_outputs[phys_display]->wl_output;
+    }
 }
 
-void lv_wayland_unassign_physical_display(lv_display_t * display)
+void lv_wayland_window_remove_physical_display(lv_display_t * display)
 {
     LV_CHECK_ARG(display != NULL, return);
     lv_wl_window_t * window = lv_display_get_driver_data(display);
@@ -236,11 +251,18 @@ void lv_wayland_window_set_fullscreen(lv_display_t * display, bool fullscreen)
     lv_wl_window_t * window = lv_display_get_driver_data(display);
     LV_CHECK_ARG_MSG(window != NULL, return, "Invalid display");
 
-    if(window->fullscreen == fullscreen) {
-        return;
-    }
     lv_wayland_xdg_set_fullscreen(&window->xdg, fullscreen, window->physical_output);
-    window->fullscreen = fullscreen;
+}
+
+bool lv_wayland_window_is_fullscreen(lv_display_t * display)
+{
+    LV_CHECK_ARG(display != NULL, return false);
+    lv_wl_window_t * window = lv_display_get_driver_data(display);
+    LV_CHECK_ARG_MSG(window != NULL, return false, "Invalid display");
+    if(!window) {
+        return false;
+    }
+    return window->fullscreen;
 }
 
 /**********************
@@ -299,10 +321,17 @@ static void delete_event(lv_event_t * e)
     wl_display_roundtrip(lv_wl_ctx.wl_display);
     lv_wayland_backend_deinit_display(&window->backend_ddata, window->lv_disp);
 
-    if(LV_WAYLAND_DIRECT_EXIT) {
-        lv_display_set_driver_data(window->lv_disp, NULL);
+    lv_indev_t * indevs[] = { window->lv_indev_keyboard,
+                              window->lv_indev_pointer,
+                              window->lv_indev_pointeraxis,
+                              window->lv_indev_touch
+                            };
+
+    for(size_t i = 0; i < sizeof(indevs) / sizeof(indevs[0]); ++i) {
+        lv_indev_delete(indevs[i]);
     }
 
+    lv_display_set_driver_data(window->lv_disp, NULL);
     lv_ll_remove(&lv_wl_ctx.window_ll, window);
     lv_free(window);
 

@@ -515,7 +515,7 @@ void lv_demo_benchmark(void)
 
 #if LV_USE_PERF_MONITOR
     lv_display_t * disp = lv_display_get_default();
-    lv_subject_add_observer_obj(&disp->perf_sysmon_backend.subject, sysmon_perf_observer_cb, title, NULL);
+    lv_subject_add_observer_obj(disp->perf_sysmon_backend.subject, sysmon_perf_observer_cb, title, NULL);
 #if LV_USE_PERF_MONITOR_LOG_MODE
     lv_obj_set_hidden(title, true);
 #endif
@@ -1042,6 +1042,10 @@ static void add_warnings(lv_obj_t * scr)
 {
 #if LV_USE_ASSERT_OBJ
     add_warning_label(scr, "LV_USE_ASSERT_OBJ is enabled making rendering slower");
+#endif
+
+#if LV_USE_CHECK_ARG
+    add_warning_label(scr, "LV_USE_CHECK_ARG is enabled possibly making the widgets demo slower");
 #endif
 
 #if LV_USE_ASSERT_MEM_INTEGRITY

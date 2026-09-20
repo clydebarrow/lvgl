@@ -1,6 +1,6 @@
 /**
  * @file lv_conf.h
- * Configuration file for v9.6.0
+ * Configuration file for v10.0.0
  */
 
 /*
@@ -487,6 +487,12 @@
 
 #endif /*LV_USE_NEMA_GFX*/
 
+/** Use LV_USE_DRAW_PXP instead.
+ *
+ *  Enable: LV_USE_DRAW_PXP
+ */
+#define LV_USE_PXP 0
+
 /** Accelerate blends, fills and transforms with the PXP (Pixel Pipeline)
  *  engine of NXP i.MX RT SoCs.
  */
@@ -513,6 +519,8 @@
 
 /** Accelerate blends, fills and transforms with the PPA (Pixel Processing
  *  Accelerator) peripheral of Espressif SoCs.
+ *
+ *  Enable: LV_USE_DRAW_SW
  */
 #define LV_USE_PPA 0
 
@@ -540,6 +548,29 @@
 
 #endif /*LV_USE_DRAW_DMA2D*/
 
+/** Accelerate blends, fills, images and text with the EPIC (Enhanced
+ *  Pixel Image Compositor) engine of SiFli BF0 SoCs. Unsupported
+ *  operations fall back to software rendering.
+ *
+ *  Enable: LV_USE_DRAW_SW
+ */
+#define LV_USE_SIFLI_EPIC 0
+
+#if LV_USE_OS != LV_OS_NONE
+#if LV_USE_SIFLI_EPIC
+/** Dispatch EPIC operations from their own thread so the CPU can keep
+ *  rendering in parallel.
+ */
+#define LV_USE_SIFLI_EPIC_DRAW_THREAD 1
+
+/** Check the status of every EPIC call and assert on failure. Useful
+ *  while bringing up a board.
+ */
+#define LV_USE_SIFLI_EPIC_ASSERT 0
+
+#endif /*LV_USE_SIFLI_EPIC*/
+#endif /*LV_USE_OS != LV_OS_NONE*/
+
 /** Offload drawing to an external EVE (FT81X/BT81X) graphics controller over SPI. */
 #define LV_USE_DRAW_EVE 0
 
@@ -556,8 +587,16 @@
 
 #endif /*LV_USE_DRAW_EVE*/
 
+/** Use LV_USE_DRAW_G2D instead.
+ *
+ *  Enable: LV_USE_DRAW_G2D
+ */
+#define LV_USE_G2D 0
+
 /** Accelerate blends, fills and image blits with the NXP G2D API (i.MX 2D GPU).
  *  Requires the g2d library and its headers.
+ *
+ *  Enable: LV_USE_DRAW_SW
  */
 #define LV_USE_DRAW_G2D 0
 
@@ -1550,6 +1589,9 @@
 /** Access the framebuffer through mmap() instead of write() calls. */
 #define LV_LINUX_FBDEV_MMAP 1
 
+/** Wait for vsync before writing to the framebuffer to reduce tearing */
+#define LV_LINUX_FBDEV_VSYNC 0
+
 #endif /*LV_USE_LINUX_FBDEV*/
 
 /** Driver for FT81X EVE graphics controllers connected over SPI. */
@@ -2402,12 +2444,10 @@
 
 #if LV_USE_CHECK_OBJ_VALIDITY
 #if LV_USE_ASSERT
-/** lv_obj_is_in_widget_tree verifies, while walking up the parent chain,
- *  that each parent's children array actually contains the child. This
- *  catches corruption where a child's parent pointer disagrees with the
- *  parent's children list. Slower than the basic reachability check
- *  (O(siblings) per level instead of O(1)). The mismatch is reported
- *  through LV_ASSERT, so LV_USE_ASSERT must be enabled too.
+/** While walking up the parent chain, lv_obj_is_in_widget_tree also checks that
+ *  each parent's children array contains the child. This finds corruption where
+ *  a child's parent pointer and the parent's children list disagree. The cost is
+ *  O(siblings) per level instead of O(1), and LV_ASSERT reports the mismatch.
  */
 #define LV_USE_CHECK_OBJ_PARENT_LINK 0
 

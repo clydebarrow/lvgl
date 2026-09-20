@@ -72,6 +72,9 @@ static void screen_create_on_trigger_event_cb(lv_event_t * e);
 static void play_timeline_on_trigger_event_cb(lv_event_t * e);
 static void delete_on_screen_unloaded_event_cb(lv_event_t * e);
 static void call_delete_cb(lv_event_t * e);
+
+static inline void set_state(lv_obj_t * obj, lv_state_t state,  bool value);
+static inline bool has_state(const lv_obj_t * obj, lv_state_t state);
 #if LV_USE_CHECK_OBJ_PARENT_LINK && LV_USE_ASSERT
     static bool parent_contains_child(const lv_obj_t * parent, const lv_obj_t * child);
 #endif
@@ -207,6 +210,13 @@ static const lv_property_ops_t lv_obj_properties[] = {
         .id = LV_PROPERTY_OBJ_INDEX,
         .getter = lv_obj_get_index,
     },
+#if LV_USE_OBJ_NAME
+    {
+        .id = LV_PROPERTY_OBJ_NAME,
+        .getter = lv_obj_get_name,
+        .setter = lv_obj_set_name,
+    },
+#endif
     {
         .id = LV_PROPERTY_OBJ_HIDDEN,
         .setter = lv_obj_set_hidden,
@@ -331,7 +341,7 @@ static const lv_property_ops_t lv_obj_properties[] = {
         .id = LV_PROPERTY_ID_ANY,
         .setter = lv_obj_set_any,
         .getter = lv_obj_get_any,
-    }
+    },
 };
 #endif
 
@@ -509,7 +519,7 @@ void lv_obj_set_hidden(lv_obj_t * obj, bool en)
     if(!obj->hidden) lv_obj_invalidate(obj);
 
     /*Focus the next next item when this one get hidden*/
-    if(obj->hidden && lv_obj_has_state(obj, LV_STATE_FOCUSED)) {
+    if(obj->hidden && has_state(obj, LV_STATE_FOCUSED)) {
         lv_group_t * group = lv_obj_get_group(obj);
         if(group != NULL) {
             lv_group_focus_next(group);
@@ -761,73 +771,85 @@ void lv_obj_remove_state(lv_obj_t * obj, lv_state_t state)
 void lv_obj_set_state(lv_obj_t * obj, lv_state_t state, bool v)
 {
     LV_CHECK_OBJ(obj, MY_CLASS, return);
-    if(v) lv_obj_add_state(obj, state);
-    else lv_obj_remove_state(obj, state);
+    set_state(obj, state, v);
 }
 
 void lv_obj_set_alt(lv_obj_t * obj, bool en)
 {
-    lv_obj_set_state(obj, LV_STATE_ALT, en);
+    LV_CHECK_OBJ(obj, MY_CLASS, return);
+    set_state(obj, LV_STATE_ALT, en);
 }
 
 void lv_obj_set_checked(lv_obj_t * obj, bool en)
 {
-    lv_obj_set_state(obj, LV_STATE_CHECKED, en);
+    LV_CHECK_OBJ(obj, MY_CLASS, return);
+    set_state(obj, LV_STATE_CHECKED, en);
 }
 
 void lv_obj_set_focused(lv_obj_t * obj, bool en)
 {
-    lv_obj_set_state(obj, LV_STATE_FOCUSED, en);
+    LV_CHECK_OBJ(obj, MY_CLASS, return);
+    set_state(obj, LV_STATE_FOCUSED, en);
 }
 
 void lv_obj_set_focus_key(lv_obj_t * obj, bool en)
 {
-    lv_obj_set_state(obj, LV_STATE_FOCUS_KEY, en);
+    LV_CHECK_OBJ(obj, MY_CLASS, return);
+    set_state(obj, LV_STATE_FOCUS_KEY, en);
 }
 
 void lv_obj_set_edited(lv_obj_t * obj, bool en)
 {
-    lv_obj_set_state(obj, LV_STATE_EDITED, en);
+    LV_CHECK_OBJ(obj, MY_CLASS, return);
+    set_state(obj, LV_STATE_EDITED, en);
 }
 
 void lv_obj_set_hovered(lv_obj_t * obj, bool en)
 {
-    lv_obj_set_state(obj, LV_STATE_HOVERED, en);
+    LV_CHECK_OBJ(obj, MY_CLASS, return);
+    set_state(obj, LV_STATE_HOVERED, en);
 }
 
 void lv_obj_set_pressed(lv_obj_t * obj, bool en)
 {
-    lv_obj_set_state(obj, LV_STATE_PRESSED, en);
+    LV_CHECK_OBJ(obj, MY_CLASS, return);
+    set_state(obj, LV_STATE_PRESSED, en);
 }
 
 void lv_obj_set_scrolled(lv_obj_t * obj, bool en)
 {
-    lv_obj_set_state(obj, LV_STATE_SCROLLED, en);
+    LV_CHECK_OBJ(obj, MY_CLASS, return);
+    set_state(obj, LV_STATE_SCROLLED, en);
 }
 
 void lv_obj_set_disabled(lv_obj_t * obj, bool en)
 {
-    lv_obj_set_state(obj, LV_STATE_DISABLED, en);
+    LV_CHECK_OBJ(obj, MY_CLASS, return);
+    set_state(obj, LV_STATE_DISABLED, en);
 }
 
 void lv_obj_set_state_user_1(lv_obj_t * obj, bool en)
 {
-    lv_obj_set_state(obj, LV_STATE_USER_1, en);
+    LV_CHECK_OBJ(obj, MY_CLASS, return);
+    set_state(obj, LV_STATE_USER_1, en);
 }
 
 void lv_obj_set_state_user_2(lv_obj_t * obj, bool en)
 {
-    lv_obj_set_state(obj, LV_STATE_USER_2, en);
+    LV_CHECK_OBJ(obj, MY_CLASS, return);
+    set_state(obj, LV_STATE_USER_2, en);
 }
 
 void lv_obj_set_state_user_3(lv_obj_t * obj, bool en)
 {
-    lv_obj_set_state(obj, LV_STATE_USER_3, en);
+    LV_CHECK_OBJ(obj, MY_CLASS, return);
+    set_state(obj, LV_STATE_USER_3, en);
 }
 
 void lv_obj_set_state_user_4(lv_obj_t * obj, bool en)
 {
-    lv_obj_set_state(obj, LV_STATE_USER_4, en);
+    LV_CHECK_OBJ(obj, MY_CLASS, return);
+    set_state(obj, LV_STATE_USER_4, en);
 }
 
 /*=======================
@@ -1088,73 +1110,85 @@ lv_state_t lv_obj_get_state(const lv_obj_t * obj)
 bool lv_obj_has_state(const lv_obj_t * obj, lv_state_t state)
 {
     LV_CHECK_OBJ(obj, MY_CLASS, return false);
-
-    return !!(obj->state & state);
+    return has_state(obj, state);
 }
 
 bool lv_obj_is_alt(const lv_obj_t * obj)
 {
-    return lv_obj_has_state(obj, LV_STATE_ALT);
+    LV_CHECK_OBJ(obj, MY_CLASS, return false);
+    return has_state(obj, LV_STATE_ALT);
 }
 
 bool lv_obj_is_checked(const lv_obj_t * obj)
 {
-    return lv_obj_has_state(obj, LV_STATE_CHECKED);
+    LV_CHECK_OBJ(obj, MY_CLASS, return false);
+    return has_state(obj, LV_STATE_CHECKED);
 }
 
 bool lv_obj_is_focused(const lv_obj_t * obj)
 {
-    return lv_obj_has_state(obj, LV_STATE_FOCUSED);
+    LV_CHECK_OBJ(obj, MY_CLASS, return false);
+    return has_state(obj, LV_STATE_FOCUSED);
 }
 
 bool lv_obj_is_focus_key(const lv_obj_t * obj)
 {
-    return lv_obj_has_state(obj, LV_STATE_FOCUS_KEY);
+    LV_CHECK_OBJ(obj, MY_CLASS, return false);
+    return has_state(obj, LV_STATE_FOCUS_KEY);
 }
 
 bool lv_obj_is_edited(const lv_obj_t * obj)
 {
-    return lv_obj_has_state(obj, LV_STATE_EDITED);
+    LV_CHECK_OBJ(obj, MY_CLASS, return false);
+    return has_state(obj, LV_STATE_EDITED);
 }
 
 bool lv_obj_is_hovered(const lv_obj_t * obj)
 {
-    return lv_obj_has_state(obj, LV_STATE_HOVERED);
+    LV_CHECK_OBJ(obj, MY_CLASS, return false);
+    return has_state(obj, LV_STATE_HOVERED);
 }
 
 bool lv_obj_is_pressed(const lv_obj_t * obj)
 {
-    return lv_obj_has_state(obj, LV_STATE_PRESSED);
+    LV_CHECK_OBJ(obj, MY_CLASS, return false);
+    return has_state(obj, LV_STATE_PRESSED);
 }
 
 bool lv_obj_is_scrolled(const lv_obj_t * obj)
 {
-    return lv_obj_has_state(obj, LV_STATE_SCROLLED);
+    LV_CHECK_OBJ(obj, MY_CLASS, return false);
+    return has_state(obj, LV_STATE_SCROLLED);
 }
 
 bool lv_obj_is_disabled(const lv_obj_t * obj)
 {
-    return lv_obj_has_state(obj, LV_STATE_DISABLED);
+    LV_CHECK_OBJ(obj, MY_CLASS, return false);
+    return has_state(obj, LV_STATE_DISABLED);
 }
 
 bool lv_obj_is_state_user_1(const lv_obj_t * obj)
 {
-    return lv_obj_has_state(obj, LV_STATE_USER_1);
+    LV_CHECK_OBJ(obj, MY_CLASS, return false);
+    return has_state(obj, LV_STATE_USER_1);
 }
 
 bool lv_obj_is_state_user_2(const lv_obj_t * obj)
 {
-    return lv_obj_has_state(obj, LV_STATE_USER_2);
+    LV_CHECK_OBJ(obj, MY_CLASS, return false);
+    return has_state(obj, LV_STATE_USER_2);
 }
 
 bool lv_obj_is_state_user_3(const lv_obj_t * obj)
 {
-    return lv_obj_has_state(obj, LV_STATE_USER_3);
+    LV_CHECK_OBJ(obj, MY_CLASS, return false);
+    return has_state(obj, LV_STATE_USER_3);
 }
 
 bool lv_obj_is_state_user_4(const lv_obj_t * obj)
 {
-    return lv_obj_has_state(obj, LV_STATE_USER_4);
+    LV_CHECK_OBJ(obj, MY_CLASS, return false);
+    return has_state(obj, LV_STATE_USER_4);
 }
 
 lv_group_t * lv_obj_get_group(const lv_obj_t * obj)
@@ -1318,7 +1352,6 @@ void lv_obj_add_screen_load_event(lv_obj_t * obj, lv_event_code_t trigger, lv_ob
 {
     LV_CHECK_OBJ(obj, MY_CLASS, return);
     LV_CHECK_ARG_MSG(screen != NULL, return, "can't load a non-existing screen");
-    LV_CHECK_ARG(duration > 0 || anim_type == LV_SCREEN_LOAD_ANIM_NONE, return);
 
     screen_load_anim_dsc_t * dsc = lv_malloc(sizeof(screen_load_anim_dsc_t));
     LV_ASSERT_MALLOC(dsc);
@@ -1337,7 +1370,6 @@ void lv_obj_add_screen_create_event(lv_obj_t * obj, lv_event_code_t trigger, lv_
 {
     LV_CHECK_OBJ(obj, MY_CLASS, return);
     LV_CHECK_ARG(screen_create_cb != NULL, return);
-    LV_CHECK_ARG(duration > 0 || anim_type == LV_SCREEN_LOAD_ANIM_NONE, return);
 
     screen_load_anim_dsc_t * dsc = lv_malloc(sizeof(screen_load_anim_dsc_t));
     LV_ASSERT_MALLOC(dsc);
@@ -1548,7 +1580,7 @@ static void lv_obj_draw(lv_event_t * e)
         int32_t w = lv_obj_get_style_transform_width_internal(obj, LV_PART_MAIN);
         int32_t h = lv_obj_get_style_transform_height_internal(obj, LV_PART_MAIN);
         lv_area_t coords;
-        lv_area_copy(&coords, &obj->coords);
+        coords = obj->coords;
         lv_area_increase(&coords, w, h);
 
         if(lv_area_is_in(info->area, &coords, r) == false) {
@@ -1595,7 +1627,7 @@ static void lv_obj_draw(lv_event_t * e)
         int32_t w = lv_obj_get_style_transform_width_internal(obj, LV_PART_MAIN);
         int32_t h = lv_obj_get_style_transform_height_internal(obj, LV_PART_MAIN);
         lv_area_t coords;
-        lv_area_copy(&coords, &obj->coords);
+        coords = obj->coords;
         lv_area_increase(&coords, w, h);
 
         bool backdrop_blur = lv_obj_get_style_blur_backdrop_internal(obj, LV_PART_MAIN);
@@ -1625,7 +1657,7 @@ static void lv_obj_draw(lv_event_t * e)
             int32_t w = lv_obj_get_style_transform_width_internal(obj, LV_PART_MAIN);
             int32_t h = lv_obj_get_style_transform_height_internal(obj, LV_PART_MAIN);
             lv_area_t coords;
-            lv_area_copy(&coords, &obj->coords);
+            coords = obj->coords;
             lv_area_increase(&coords, w, h);
 
             lv_draw_blur_dsc_t blur_dsc;
@@ -1655,7 +1687,7 @@ static void lv_obj_draw(lv_event_t * e)
             int32_t w = lv_obj_get_style_transform_width_internal(obj, LV_PART_MAIN);
             int32_t h = lv_obj_get_style_transform_height_internal(obj, LV_PART_MAIN);
             lv_area_t coords;
-            lv_area_copy(&coords, &obj->coords);
+            coords = obj->coords;
             lv_area_increase(&coords, w, h);
 
             lv_draw_rect(layer, &draw_dsc, &coords);
@@ -1768,11 +1800,11 @@ static void lv_obj_event(const lv_obj_class_t * class_p, lv_event_t * e)
     }
     else if(code == LV_EVENT_RELEASED) {
         lv_obj_remove_state(obj, LV_STATE_PRESSED);
-        void * param = lv_event_get_param(e);
+        lv_indev_t * indev = lv_event_get_indev(e);
         /*Go the checked state if enabled*/
-        if(lv_indev_get_scroll_obj(param) == NULL && lv_obj_is_checkable(obj)) {
+        if((indev == NULL || lv_indev_get_scroll_obj(indev) == NULL) && lv_obj_is_checkable(obj)) {
 
-            bool was_checked = lv_obj_has_state(obj, LV_STATE_CHECKED);
+            bool was_checked = has_state(obj, LV_STATE_CHECKED);
             if(!(lv_obj_get_state(obj) & LV_STATE_CHECKED)) {
                 lv_obj_add_state(obj, LV_STATE_CHECKED);
             }
@@ -1780,7 +1812,7 @@ static void lv_obj_event(const lv_obj_class_t * class_p, lv_event_t * e)
             else if(!lv_obj_is_radio_button(obj)) {
                 lv_obj_remove_state(obj, LV_STATE_CHECKED);
             }
-            if(was_checked != lv_obj_has_state(obj, LV_STATE_CHECKED)) {
+            if(was_checked != has_state(obj, LV_STATE_CHECKED)) {
                 lv_result_t res = lv_obj_send_event(obj, LV_EVENT_VALUE_CHANGED, NULL);
                 if(res != LV_RESULT_OK) return;
 
@@ -1790,7 +1822,7 @@ static void lv_obj_event(const lv_obj_class_t * class_p, lv_event_t * e)
         }
     }
     else if(code == LV_EVENT_VALUE_CHANGED) {
-        if(lv_obj_is_radio_button(obj) && lv_obj_has_state(obj, LV_STATE_CHECKED)) {
+        if(lv_obj_is_radio_button(obj) && has_state(obj, LV_STATE_CHECKED)) {
             lv_obj_t * parent = lv_obj_get_parent(obj);
             if(parent) {
                 uint32_t child_cnt = lv_obj_get_child_count(parent);
@@ -1799,7 +1831,7 @@ static void lv_obj_event(const lv_obj_class_t * class_p, lv_event_t * e)
                     lv_obj_t * sibling = lv_obj_get_child(parent, i);
                     if(obj == sibling) continue;
 
-                    if(lv_obj_is_radio_button(sibling) && lv_obj_has_state(sibling, LV_STATE_CHECKED)) {
+                    if(lv_obj_is_radio_button(sibling) && has_state(sibling, LV_STATE_CHECKED)) {
                         lv_obj_remove_state(sibling, LV_STATE_CHECKED);
                         lv_result_t res = lv_obj_send_event(sibling, LV_EVENT_VALUE_CHANGED, NULL);
                         if(res != LV_RESULT_OK) return;
@@ -1824,7 +1856,7 @@ static void lv_obj_event(const lv_obj_class_t * class_p, lv_event_t * e)
     else if(code == LV_EVENT_KEY) {
         if(lv_obj_is_checkable(obj)) {
             uint32_t c = lv_event_get_key(e);
-            bool was_checked = lv_obj_has_state(obj, LV_STATE_CHECKED);
+            bool was_checked = has_state(obj, LV_STATE_CHECKED);
             if(c == LV_KEY_RIGHT || c == LV_KEY_UP) {
                 lv_obj_add_state(obj, LV_STATE_CHECKED);
             }
@@ -1836,7 +1868,7 @@ static void lv_obj_event(const lv_obj_class_t * class_p, lv_event_t * e)
             }
 
             /*With Enter LV_EVENT_RELEASED will send VALUE_CHANGE event*/
-            if(c != LV_KEY_ENTER && was_checked != lv_obj_has_state(obj, LV_STATE_CHECKED)) {
+            if(c != LV_KEY_ENTER && was_checked != has_state(obj, LV_STATE_CHECKED)) {
                 lv_result_t res = lv_obj_send_event(obj, LV_EVENT_VALUE_CHANGED, NULL);
                 if(res != LV_RESULT_OK) return;
 
@@ -1888,7 +1920,7 @@ static void lv_obj_event(const lv_obj_class_t * class_p, lv_event_t * e)
         lv_indev_t * indev = lv_indev_active();
         if(indev == NULL) indev = lv_event_get_indev(e);
 
-        lv_indev_type_t indev_type = lv_indev_get_type(indev);
+        lv_indev_type_t indev_type = indev != NULL ? lv_indev_get_type(indev) : LV_INDEV_TYPE_NONE;
         if(indev_type == LV_INDEV_TYPE_KEYPAD || indev_type == LV_INDEV_TYPE_ENCODER) state |= LV_STATE_FOCUS_KEY;
         if(editing) {
             state |= LV_STATE_EDITED;
@@ -1988,6 +2020,7 @@ static void update_obj_state(lv_obj_t * obj, lv_state_t new_state)
 
     obj->state = new_state;
     lv_obj_update_layer_type(obj);
+    lv_obj_update_blur_status(obj);
 
     /*Skip transitions if the widget is not rendered yet. */
     if(!obj->rendered) {
@@ -2180,6 +2213,21 @@ static void call_delete_cb(lv_event_t * e)
     dsc->cb(dsc->user_data);
     lv_obj_remove_delete_cb(dsc);
 }
+
+static inline void set_state(lv_obj_t * obj, lv_state_t state,  bool value)
+{
+    LV_ASSERT(obj != NULL);
+    if(value) lv_obj_add_state(obj, state);
+    else lv_obj_remove_state(obj, state);
+}
+
+static inline bool has_state(const lv_obj_t * obj, lv_state_t state)
+{
+    LV_ASSERT(obj != NULL);
+
+    return !!(obj->state & state);
+}
+
 
 #if LV_USE_CHECK_OBJ_PARENT_LINK && LV_USE_ASSERT
 static bool parent_contains_child(const lv_obj_t * parent, const lv_obj_t * child)

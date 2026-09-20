@@ -45,7 +45,10 @@ static void lv_gltf_destructor(const lv_obj_class_t * class_p, lv_obj_t * obj);
 static void lv_gltf_event(const lv_obj_class_t * class_p, lv_event_t * e);
 static void lv_gltf_view_state_init(lv_gltf_t * state);
 static void lv_gltf_view_desc_init(lv_gltf_view_desc_t * state);
-static void lv_gltf_parse_model(lv_gltf_t * viewer, lv_gltf_model_t * model);
+static bool lv_gltf_parse_model(lv_gltf_t * viewer, lv_gltf_model_data_t * model_data);
+static void detach_model_at(lv_gltf_t * viewer, uint32_t index);
+static void release_model_at(lv_gltf_t * viewer, uint32_t index);
+static void refresh_opaque_pass(lv_gltf_t * viewer);
 static void setup_compile_and_load_bg_shader(lv_opengl_shader_manager_t * manager);
 static void setup_background_environment(GLuint program, GLuint * vao, GLuint * indexBuffer, GLuint * vertexBuffer);
 static lv_3dray_t make_empty_ray(void);
@@ -195,6 +198,67 @@ lv_gltf_model_t * lv_gltf_get_primary_model(const lv_obj_t * obj)
 {
     LV_CHECK_OBJ(obj, MY_CLASS, return NULL);
     return lv_gltf_get_model_by_index(obj, 0);
+}
+
+void lv_gltf_remove_model(lv_obj_t * obj, lv_gltf_model_t * model)
+{
+    LV_CHECK_OBJ(obj, MY_CLASS, return);
+    LV_CHECK_ARG(model != NULL, return);
+    lv_gltf_t * viewer = (lv_gltf_t *)obj;
+
+    const uint32_t model_count = lv_array_size(&viewer->models);
+    for(uint32_t i = 0; i < model_count; ++i) {
+        const lv_gltf_model_data_t * model_data = (lv_gltf_model_data_t *)lv_array_at(&viewer->models, i);
+        if(model_data->model != model) {
+            continue;
+        }
+        const bool owned = model_data->owned;
+
+        lv_gltf_detach_model(obj, model);
+        if(owned) {
+            lv_gltf_model_delete(model);
+        }
+        return;
+    }
+}
+
+void lv_gltf_detach_model(lv_obj_t * obj, lv_gltf_model_t * model)
+{
+    LV_CHECK_OBJ(obj, MY_CLASS, return);
+    LV_CHECK_ARG(model != NULL, return);
+    lv_gltf_t * viewer = (lv_gltf_t *)obj;
+
+    const uint32_t model_count = lv_array_size(&viewer->models);
+    for(uint32_t i = 0; i < model_count; ++i) {
+        const lv_gltf_model_data_t * model_data = (lv_gltf_model_data_t *)lv_array_at(&viewer->models, i);
+        if(model_data->model != model) {
+            continue;
+        }
+
+        detach_model_at(viewer, i);
+        lv_array_remove(&viewer->models, i);
+        refresh_opaque_pass(viewer);
+
+        /* The view was focused on the model that just left, so follow the new primary one */
+        if(i == 0 && !lv_array_is_empty(&viewer->models)) {
+            lv_gltf_recenter(obj, NULL);
+        }
+
+        lv_obj_invalidate(obj);
+        return;
+    }
+}
+
+void lv_gltf_remove_all_models(lv_obj_t * obj)
+{
+    LV_CHECK_OBJ(obj, MY_CLASS, return);
+    lv_gltf_t * viewer = (lv_gltf_t *)obj;
+
+    while(!lv_array_is_empty(&viewer->models)) {
+        release_model_at(viewer, 0);
+    }
+    viewer->state.render_opaque_buffer = false;
+    lv_obj_invalidate(obj);
 }
 
 void lv_gltf_set_yaw(lv_obj_t * obj, float yaw)
@@ -350,8 +414,12 @@ void lv_gltf_set_camera(lv_obj_t * obj, uint32_t value)
     lv_gltf_model_t * model = modeld->model;
     LV_ASSERT_NULL(model);
 
-    /* Index 0 is the viewer's own camera, 1 and up are the cameras of the model */
-    LV_CHECK_ARG(value <= model->asset.cameras.size(), return);
+    /* Index 0 is the viewer's own camera, 1 and up are the cameras of the model.
+     * A higher index is clamped to the last camera. */
+    const uint32_t camera_count = (uint32_t)model->asset.cameras.size();
+    if(value > camera_count) {
+        value = camera_count;
+    }
 
     model->camera = value;
     lv_obj_invalidate(obj);
@@ -639,28 +707,85 @@ static lv_gltf_model_t * add_model(lv_gltf_t * viewer, lv_gltf_model_t * model, 
     lv_memset(&model_data, 0, sizeof(model_data));
     model_data.model = model;
     model_data.owned = owned;
+    model_data.last_material_index = 99999;
     lv_array_init(&model_data.skin_textures, 0, sizeof(GLuint));
+    lv_array_init(&model_data.compiled_shaders, 1, sizeof(lv_gltf_compiled_shader_t));
 
     if(lv_array_push_back(&viewer->models, &model_data) != LV_RESULT_OK) {
+        lv_array_deinit(&model_data.skin_textures);
+        lv_array_deinit(&model_data.compiled_shaders);
         if(owned) {
             lv_gltf_model_delete(model);
         }
         return NULL;
     }
     if(lv_gltf_model_add_viewer(model, (lv_obj_t *)viewer) != LV_RESULT_OK) {
+        const uint32_t last = lv_array_size(&viewer->models) - 1;
+        lv_gltf_model_data_t * added = (lv_gltf_model_data_t *)lv_array_at(&viewer->models, last);
+        lv_array_deinit(&added->skin_textures);
+        lv_array_deinit(&added->compiled_shaders);
+        lv_array_remove(&viewer->models, last);
         if(owned) {
             lv_gltf_model_delete(model);
         }
-        lv_array_remove(&viewer->models, lv_array_size(&viewer->models) - 1);
         return NULL;
     }
-    lv_gltf_parse_model(viewer, model);
+    lv_gltf_model_data_t * stored = (lv_gltf_model_data_t *)lv_array_at(&viewer->models,
+                                                                        lv_array_size(&viewer->models) - 1);
+    stored->requires_opaque_pass = lv_gltf_parse_model(viewer, stored);
+    viewer->state.render_opaque_buffer |= stored->requires_opaque_pass;
 
     if(lv_array_size(&viewer->models) == 1) {
         lv_gltf_recenter((lv_obj_t *)viewer, model);
     }
 
     return model;
+}
+
+/* Frees what the viewer built for a model and lets go of it, but never deletes it. Deleting
+ * is left to the caller, once the entry is out of the array, so that a model deleting itself
+ * out of its viewers cannot come back in here */
+static void detach_model_at(lv_gltf_t * viewer, uint32_t index)
+{
+    lv_gltf_model_data_t * model_data = (lv_gltf_model_data_t *)lv_array_at(&viewer->models, index);
+    LV_ASSERT_NULL(model_data);
+
+    const uint32_t skin_texture_count = lv_array_size(&model_data->skin_textures);
+    for(uint32_t i = 0; i < skin_texture_count; ++i) {
+        GL_CALL(glDeleteTextures(1, (GLuint *)lv_array_at(&model_data->skin_textures, i)));
+    }
+    lv_array_deinit(&model_data->skin_textures);
+    lv_array_deinit(&model_data->compiled_shaders);
+
+    lv_gltf_model_remove_viewer(model_data->model, (lv_obj_t *)viewer);
+}
+
+static void release_model_at(lv_gltf_t * viewer, uint32_t index)
+{
+    const lv_gltf_model_data_t * model_data = (lv_gltf_model_data_t *)lv_array_at(&viewer->models, index);
+    LV_ASSERT_NULL(model_data);
+    const bool owned = model_data->owned;
+    lv_gltf_model_t * model = model_data->model;
+
+    detach_model_at(viewer, index);
+    lv_array_remove(&viewer->models, index);
+
+    if(owned) {
+        lv_gltf_model_delete(model);
+    }
+}
+
+static void refresh_opaque_pass(lv_gltf_t * viewer)
+{
+    viewer->state.render_opaque_buffer = false;
+    const uint32_t model_count = lv_array_size(&viewer->models);
+    for(uint32_t i = 0; i < model_count; ++i) {
+        const lv_gltf_model_data_t * model_data = (lv_gltf_model_data_t *)lv_array_at(&viewer->models, i);
+        if(model_data->requires_opaque_pass) {
+            viewer->state.render_opaque_buffer = true;
+            return;
+        }
+    }
 }
 
 static lv_result_t create_default_environment(lv_gltf_t * gltf)
@@ -734,22 +859,8 @@ static void lv_gltf_destructor(const lv_obj_class_t * class_p, lv_obj_t * obj)
     GL_CALL(glDeleteBuffers(2, bg_buffers));
     lv_opengl_shader_manager_deinit(&view->shader_manager);
 
-    const size_t n = lv_array_size(&view->models);
-    for(size_t i = 0; i < n; ++i) {
-        lv_gltf_model_data_t * model_data = (lv_gltf_model_data_t *)lv_array_at(&view->models, i);
-
-        const size_t skin_texture_count = lv_array_size(&model_data->skin_textures);
-        for(size_t j = 0; j < skin_texture_count; ++j) {
-            GL_CALL(glDeleteTextures(1, (GLuint *)lv_array_at(&model_data->skin_textures, j)));
-        }
-        lv_array_deinit(&model_data->skin_textures);
-
-        if(model_data->owned) {
-            lv_gltf_model_delete(model_data->model);
-        }
-        else {
-            lv_gltf_model_remove_viewer(model_data->model, obj);
-        }
+    while(!lv_array_is_empty(&view->models)) {
+        release_model_at(view, 0);
     }
     lv_array_deinit(&view->models);
     if(view->environment && view->owns_environment) {
@@ -782,8 +893,16 @@ static void lv_gltf_view_desc_init(lv_gltf_view_desc_t * desc)
     desc->fov = 45.f;
     desc->frame_was_antialiased = false;
 }
-static void lv_gltf_parse_model(lv_gltf_t * viewer, lv_gltf_model_t * model)
+static bool lv_gltf_parse_model(lv_gltf_t * viewer, lv_gltf_model_data_t * model_data)
 {
+    lv_gltf_model_t * model = model_data->model;
+    bool requires_opaque_pass = false;
+
+    /* Parsing is a function of the model alone, so a model shown by a second viewer, or added
+     * again after it was removed, has to start from empty draw lists instead of appending to
+     * the ones a previous parse left behind */
+    lv_gltf_data_clear_node_primitives(model);
+
     const auto & iterate_callback = [&](fastgltf::Node & node, const fastgltf::math::fmat4x4 & matrix) {
         LV_UNUSED(matrix);
         if(!node.meshIndex) {
@@ -821,7 +940,7 @@ static void lv_gltf_parse_model(lv_gltf_t * viewer, lv_gltf_model_t * model)
                 continue;
             }
             const fastgltf::Material & material = model->asset.materials[material_index - 1];
-            viewer->state.render_opaque_buffer |= material.transmission != nullptr;
+            requires_opaque_pass |= material.transmission != nullptr;
 
             if(material.alphaMode == fastgltf::AlphaMode::Blend || material.transmission != nullptr) {
                 lv_gltf_data_add_blended_node_primitive(model, material_index, &node, mp);
@@ -850,7 +969,7 @@ static void lv_gltf_parse_model(lv_gltf_t * viewer, lv_gltf_model_t * model)
 
             lv_gltf_compiled_shader_t compiled_shader { lv_gltf_uniform_locations_create(program_id), program_id, };
 
-            lv_gltf_store_compiled_shader(model, material_index, &compiled_shader);
+            lv_gltf_store_compiled_shader(&model_data->compiled_shaders, material_index, &compiled_shader);
             const size_t n = lv_array_size(&defines);
             for(size_t i = 0; i < n; ++i) {
                 lv_opengl_shader_define_t * define = (lv_opengl_shader_define_t *) lv_array_at(&defines, i);
@@ -864,6 +983,7 @@ static void lv_gltf_parse_model(lv_gltf_t * viewer, lv_gltf_model_t * model)
 
     setup_compile_and_load_bg_shader(&viewer->shader_manager);
     fastgltf::iterateSceneNodes(model->asset, 0, fastgltf::math::fmat4x4(), iterate_callback);
+    return requires_opaque_pass;
 }
 
 static void setup_compile_and_load_bg_shader(lv_opengl_shader_manager_t * manager)

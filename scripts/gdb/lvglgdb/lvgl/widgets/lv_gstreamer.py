@@ -42,6 +42,14 @@ class LVGstreamer(LVImage):
         return ptr_or_none(self._wv_lv_gstreamer_t.safe_field("audio_volume"))
 
     @property
+    def aligned_frame(self):
+        return ptr_or_none(self._wv_lv_gstreamer_t.safe_field("aligned_frame"))
+
+    @property
+    def color_format(self):
+        return int(self._wv_lv_gstreamer_t.safe_field("color_format", 0))
+
+    @property
     def gstreamer_timer(self):
         return ptr_or_none(self._wv_lv_gstreamer_t.safe_field("gstreamer_timer"))
 
@@ -63,6 +71,8 @@ class LVGstreamer(LVImage):
         d["audio_convert"] = self.audio_convert
         d["video_convert"] = self.video_convert
         d["audio_volume"] = self.audio_volume
+        d["aligned_frame"] = self.aligned_frame
+        d["color_format"] = self.color_format
         d["gstreamer_timer"] = self.gstreamer_timer
         d["frame_queue"] = self.frame_queue
         d["is_video_info_valid"] = self.is_video_info_valid

@@ -17,6 +17,7 @@
  *      DEFINES
  *********************/
 
+#define LV_GLTF_ANIMATION_RESET_TIME 50
 
 /**********************
  *      TYPEDEFS
@@ -59,6 +60,12 @@ void lv_gltf_model_delete(lv_gltf_model_t * model)
     if(!model) {
         return;
     }
+
+    /* Each call drops one entry, and with it one viewer from the array being walked */
+    while(!lv_array_is_empty(&model->viewers)) {
+        lv_gltf_detach_model(*(lv_obj_t **)lv_array_at(&model->viewers, 0), model);
+    }
+
     lv_timer_delete(model->animation_update_timer);
     model->animation_update_timer = NULL;
 
@@ -81,7 +88,6 @@ void lv_gltf_model_delete(lv_gltf_model_t * model)
     }
     lv_array_deinit(&model->viewers);
     lv_array_deinit(&model->nodes);
-    lv_array_deinit(&model->compiled_shaders);
 
     /* Explicitly call destructors for C++ objects initialized with placement new */
     model->ibm_by_skin_then_node.~IbmBySkinThenNodeMap();
@@ -214,7 +220,6 @@ lv_gltf_model_t * lv_gltf_data_create_internal(const char * gltf_path,
     data->last_anim_num = -5;
     data->current_animation_max_time = 0;
     data->local_timestamp = 0.0f;
-    data->last_material_index = 99999;
 
     data->animation_speed_ratio = LV_GLTF_ANIM_SPEED_NORMAL;
     data->animation_update_timer = lv_timer_create(update_animation_cb, LV_DEF_REFR_PERIOD, data);
@@ -234,7 +239,6 @@ lv_gltf_model_t * lv_gltf_data_create_internal(const char * gltf_path,
     new(&data->ibm_by_skin_then_node) std::map<int32_t, std::map<fastgltf::Node *, fastgltf::math::fmat4x4>>;
 
     lv_array_init(&data->viewers, 1, sizeof(lv_gltf_t *));
-    lv_array_init(&data->compiled_shaders, 1, sizeof(lv_gltf_compiled_shader_t));
     return data;
 }
 
@@ -311,6 +315,28 @@ fastgltf::math::fvec3 lv_gltf_data_get_bounds_max(const lv_gltf_model_t * data)
 }
 
 
+void lv_gltf_model_set_animation_time(lv_gltf_model_t * model, uint32_t millis)
+{
+    LV_CHECK_ARG(model != NULL, return);
+    if(millis > model->current_animation_max_time) {
+        millis = model->current_animation_max_time;
+    }
+    model->local_timestamp = millis;
+    lv_gltf_model_invalidate(model);
+}
+
+void lv_gltf_model_set_animation_ratio(lv_gltf_model_t * model, float ratio)
+{
+    LV_CHECK_ARG(model != NULL, return);
+    if(ratio < 0.0f) {
+        ratio = 0.0f;
+    }
+    else if(ratio > 1.0f) {
+        ratio = 1.0f;
+    }
+    lv_gltf_model_set_animation_time(model, (uint32_t)(model->current_animation_max_time * ratio));
+}
+
 /**********************
  *   STATIC FUNCTIONS
  **********************/
@@ -325,12 +351,12 @@ static void update_animation_cb(lv_timer_t * timer)
     const uint32_t delta = lv_tick_diff(current_tick, model->last_tick);
 
     model->last_tick = current_tick;
-    model->local_timestamp += (delta * model->animation_speed_ratio) / 1000;
 
-    if(model->local_timestamp >= model->current_animation_max_time) {
-        model->local_timestamp = 50;
+    uint64_t next_timestamp = model->local_timestamp + ((delta * model->animation_speed_ratio) / 1000);
+    if(next_timestamp >= model->current_animation_max_time) {
+        next_timestamp = LV_GLTF_ANIMATION_RESET_TIME;
     }
-    lv_gltf_model_invalidate(model);
+    lv_gltf_model_set_animation_time(model, (uint32_t)next_timestamp);
 }
 
 

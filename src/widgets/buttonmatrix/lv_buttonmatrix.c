@@ -392,7 +392,7 @@ static void lv_buttonmatrix_event(const lv_obj_class_t * class_p, lv_event_t * e
         lv_indev_t * indev = lv_event_get_indev(e);
         invalidate_button_area(obj, btnm->btn_id_sel);
 
-        lv_indev_type_t indev_type = lv_indev_get_type(lv_indev_active());
+        lv_indev_type_t indev_type = indev != NULL ? lv_indev_get_type(indev) : LV_INDEV_TYPE_NONE;
         if(indev_type == LV_INDEV_TYPE_POINTER || indev_type == LV_INDEV_TYPE_BUTTON) {
             uint32_t btn_pr;
             /*Search the pressed area*/
@@ -485,15 +485,13 @@ static void lv_buttonmatrix_event(const lv_obj_class_t * class_p, lv_event_t * e
         if(btnm->btn_cnt == 0) return;
 
         lv_indev_t * indev = lv_event_get_indev(e);
-        lv_indev_type_t indev_type = lv_indev_get_type(indev);
 
         /*If not focused by an input device assume the last input device*/
-        if(indev == NULL) {
-            indev = lv_indev_get_next(NULL);
-            indev_type = lv_indev_get_type(indev);
-        }
+        if(indev == NULL) indev = lv_indev_get_next(NULL);
+        lv_indev_type_t indev_type = indev != NULL ? lv_indev_get_type(indev) : LV_INDEV_TYPE_NONE;
 
-        bool editing = lv_group_get_editing(lv_obj_get_group(obj));
+        lv_group_t * g = lv_obj_get_group(obj);
+        bool editing = g != NULL && lv_group_get_editing(g);
         /*Focus the first button if there is not selected button*/
         if(btnm->btn_id_sel == LV_BUTTONMATRIX_BUTTON_NONE) {
             if(indev_type == LV_INDEV_TYPE_KEYPAD || (indev_type == LV_INDEV_TYPE_ENCODER && editing)) {
@@ -716,7 +714,7 @@ static void draw_main(lv_event_t * e)
         }
 
         /*Get the button's area*/
-        lv_area_copy(&btn_area, &btnm->button_areas[btn_i]);
+        btn_area = btnm->button_areas[btn_i];
         btn_area.x1 += area_obj.x1;
         btn_area.y1 += area_obj.y1;
         btn_area.x2 += area_obj.x1;
@@ -955,7 +953,7 @@ static uint32_t get_button_from_point(lv_obj_t * obj, lv_point_t * p)
     pbottom = LV_MIN(pbottom, BTN_EXTRA_CLICK_AREA_MAX);
 
     for(i = 0; i < btnm->btn_cnt; i++) {
-        lv_area_copy(&btn_area, &btnm->button_areas[i]);
+        btn_area = btnm->button_areas[i];
         if(btn_area.x1 <= pleft) btn_area.x1 += obj_cords.x1 - LV_MIN(pleft, BTN_EXTRA_CLICK_AREA_MAX);
         else btn_area.x1 += obj_cords.x1 - pcol;
 
@@ -991,7 +989,7 @@ static void invalidate_button_area(const lv_obj_t * obj, uint32_t btn_idx)
     lv_buttonmatrix_t * btnm = (lv_buttonmatrix_t *)obj;
     if(btn_idx >= btnm->btn_cnt) return;
 
-    lv_area_copy(&btn_area, &btnm->button_areas[btn_idx]);
+    btn_area = btnm->button_areas[btn_idx];
     lv_obj_get_coords(obj, &obj_area);
 
     /*The buttons might have outline and shadow so make the invalidation larger with the gaps between the buttons.

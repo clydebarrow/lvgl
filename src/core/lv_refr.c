@@ -15,7 +15,6 @@
 #include "../display/lv_display_private.h"
 #include "../misc/lv_timer_private.h"
 #include "../draw/lv_draw_private.h"
-#include "../draw/opengles/lv_draw_opengles.h"
 #include "lv_global.h"
 #include "../lvgl_public.h"
 #include "lv_obj_style_internal.h"
@@ -23,6 +22,10 @@
 /*********************
  *      DEFINES
  *********************/
+
+#if defined(LV_COLOR_16_SWAP) && LV_COLOR_16_SWAP && !defined(LV_COLOR_16_SWAP_DISABLE_WARNING)
+    #warning LV_COLOR_16_SWAP will be removed completely in v10 after being a private config since v9. Use LV_COLOR_FORMAT_RGB565_SWAPPED as the display color format instead
+#endif
 
 /*Display being refreshed*/
 #define disp_refr LV_GLOBAL_DEFAULT()->disp_refresh
@@ -337,7 +340,7 @@ lv_result_t lv_inv_area(lv_display_t * disp, const lv_area_t * area_p)
         disp->inv_p = 0;
         tmp_area_p = &scr_area;
     }
-    lv_area_copy(&disp->inv_areas[disp->inv_p], tmp_area_p);
+    disp->inv_areas[disp->inv_p] = *tmp_area_p;
     disp->inv_p++;
 
     lv_display_send_event(disp, LV_EVENT_REFR_REQUEST, NULL);
@@ -370,12 +373,6 @@ void lv_display_refr_timer(lv_timer_t * timer)
 
     if(timer) {
         disp_refr = timer->user_data;
-        /* Ensure the timer does not run again automatically.
-         * This is done before refreshing in case refreshing invalidates something else.
-         * However if the performance monitor is enabled keep the timer running to count the FPS.*/
-#if !LV_USE_PERF_MONITOR
-        lv_timer_pause(timer);
-#endif
     }
     else {
         disp_refr = lv_display_get_default();
@@ -394,6 +391,15 @@ void lv_display_refr_timer(lv_timer_t * timer)
         return;
     }
 
+    /* Ensure the timer does not run again automatically.
+     * This is done before refreshing in case refreshing invalidates something else.
+     * However if the performance monitor is enabled keep the timer running to count the FPS.
+     * Pause here where the draw buffer exists otherwise lv_display_refr_timer() may not be
+     * called again which would yield a blank screen */
+#if !LV_USE_PERF_MONITOR
+    if(timer) lv_timer_pause(timer);
+#endif
+
     lv_result_t res = lv_display_send_event(disp_refr, LV_EVENT_REFR_START, NULL);
     if(res == LV_RESULT_INVALID) {
         LV_TRACE_REFR("deleted");
@@ -403,7 +409,7 @@ void lv_display_refr_timer(lv_timer_t * timer)
 
     /*Refresh the screen's layout if required*/
     LV_PROFILER_LAYOUT_BEGIN_TAG("layout");
-    lv_obj_update_layout(disp_refr->act_scr);
+    if(disp_refr->act_scr) lv_obj_update_layout(disp_refr->act_scr);
     if(disp_refr->prev_scr) lv_obj_update_layout(disp_refr->prev_scr);
 
     lv_obj_update_layout(disp_refr->bottom_layer);
@@ -418,6 +424,8 @@ void lv_display_refr_timer(lv_timer_t * timer)
         goto refr_finish;
     }
 
+    /*Expand the invalidated areas for blur objects before joining them*/
+    lv_obj_invalidate_expand_blur(disp_refr);
     lv_refr_join_area();
     refr_sync_areas();
     refr_invalid_areas();
@@ -653,7 +661,7 @@ static void lv_refr_join_area(void)
             /*Join two area only if the joined area size is smaller*/
             if(lv_area_get_size(&joined_area) < (lv_area_get_size(&disp_refr->inv_areas[join_in]) +
                                                  lv_area_get_size(&disp_refr->inv_areas[join_from]))) {
-                lv_area_copy(&disp_refr->inv_areas[join_in], &joined_area);
+                disp_refr->inv_areas[join_in] = joined_area;
 
                 /*Mark 'join_form' is joined into 'join_in'*/
                 disp_refr->inv_area_joined[join_from] = 1;
@@ -1056,30 +1064,9 @@ static void refr_configured_layer(lv_layer_t * layer)
     }
     /*If the screen is transparent initialize it when the flushing is ready*/
     if(lv_color_format_has_alpha(disp_refr->color_format)) {
-#if LV_USE_DRAW_OPENGLES
-        lv_layer_t * clear_target_layer = disp_refr->layer_head ? disp_refr->layer_head : layer;
-        /* TODO: this driver-specific branch is a temporary workaround.
-         * The proper fix may be a generic per-draw-unit clear callback (e.g.
-         * a `clear_area_cb` on `lv_draw_unit_t`) so `lv_refr` can just dispatch
-         * the right clear function. LVGL does not currently expose that hook now.
-         * This is a special-case for Draw_OpenGLES to fix issue #9912 (PR #9987).
-         */
-        /*With Draw_OpenGLES the layer's draw_buf is a dummy CPU buffer and the
-         *real pixels live in a GL texture. Clearing the CPU buffer is a no-op
-         *on the texture, so perform a GPU-side clear of the dirty area.
-         *Key this off the refreshing display's real backing layer instead of
-         *the current layer, because tiled rendering can use temporary tile
-         *layers with NULL user_data.*/
-        if(disp_refr->layer_head != NULL && disp_refr->layer_head->user_data != NULL) {
-            lv_draw_opengles_clear_layer_area(clear_target_layer, &layer->_clip_area);
-        }
-        else
-#endif
-        {
-            lv_area_t clear_area = layer->_clip_area;
-            lv_area_move(&clear_area, -layer->buf_area.x1, -layer->buf_area.y1);
-            lv_draw_buf_clear(layer->draw_buf, &clear_area);
-        }
+        lv_area_t clear_area = layer->_clip_area;
+        lv_area_move(&clear_area, -layer->buf_area.x1, -layer->buf_area.y1);
+        lv_draw_buf_clear_ex(layer->draw_buf, &clear_area, layer);
     }
 
     lv_obj_t * top_act_scr = NULL;
@@ -1347,7 +1334,7 @@ static bool refr_check_obj_clip_overflow(lv_layer_t * layer, lv_obj_t * obj)
     /*Truncate the area to the object*/
     lv_area_t obj_coords;
     int32_t ext_size = lv_obj_get_ext_draw_size(obj);
-    lv_area_copy(&obj_coords, &obj->coords);
+    obj_coords = obj->coords;
     lv_area_increase(&obj_coords, ext_size, ext_size);
 
     lv_obj_get_transformed_area(obj, &obj_coords, LV_OBJ_POINT_TRANSFORM_FLAG_RECURSIVE);

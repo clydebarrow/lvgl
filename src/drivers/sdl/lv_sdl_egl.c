@@ -13,6 +13,7 @@
 #include <SDL2/SDL_syswm.h>
 #include "lv_sdl_private.h"
 #include "../opengles/lv_opengles_egl_private.h"
+#include "../../draw/nanovg/lv_draw_nanovg.h"
 
 /*********************
  *      DEFINES
@@ -69,6 +70,8 @@ const lv_sdl_backend_ops_t lv_sdl_backend_ops = {
 
 static lv_result_t init_display(lv_display_t * display)
 {
+    lv_opengles_egl_set_display_color_format(display);
+
     lv_egl_interface_t ifc = lv_sdl_get_egl_interface(display);
     lv_sdl_egl_display_data_t * ddata = lv_malloc_zeroed(sizeof(*ddata));
     if(!ddata) {
@@ -90,6 +93,9 @@ static lv_result_t init_display(lv_display_t * display)
         static lv_draw_buf_t draw_buf;
         static uint8_t dummy_buf;
         lv_draw_buf_init(&draw_buf, 4096, 4096, LV_COLOR_FORMAT_ARGB8888, 4096 * 4, &dummy_buf, 4096 * 4096 * 4);
+#if LV_USE_DRAW_NANOVG
+        draw_buf.handlers = lv_draw_nanovg_get_draw_buf_handlers();
+#endif
 
         lv_display_set_draw_buffers(display, &draw_buf, NULL);
         lv_display_set_render_mode(display, LV_DISPLAY_RENDER_MODE_FULL);
@@ -193,12 +199,7 @@ static void flush_cb(lv_display_t * display, const lv_area_t * area, uint8_t * p
     LV_ASSERT(ddata != NULL);
 
     if(lv_display_flush_is_last(display)) {
-#if LV_USE_DRAW_OPENGLES
-        lv_opengles_viewport(0, 0,
-                             lv_display_get_original_horizontal_resolution(display),
-                             lv_display_get_original_vertical_resolution(display));
-        lv_opengles_render_display_texture_internal(display, false, true);
-#endif /*LV_USE_DRAW_OPENGLES*/
+        lv_opengles_texture_render_display(&ddata->opengles_texture, display);
         lv_opengles_egl_update(ddata->egl_ctx);
     }
     lv_display_flush_ready(display);

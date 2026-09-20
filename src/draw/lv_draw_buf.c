@@ -176,7 +176,20 @@ void lv_draw_buf_flush_cache(const lv_draw_buf_t * draw_buf, const lv_area_t * a
 void lv_draw_buf_clear(lv_draw_buf_t * draw_buf, const lv_area_t * a)
 {
     LV_CHECK_ARG(draw_buf != NULL, return);
+    lv_draw_buf_clear_ex(draw_buf, a, NULL);
+}
+
+void lv_draw_buf_clear_ex(lv_draw_buf_t * draw_buf, const lv_area_t * a, lv_layer_t * layer)
+{
+    LV_CHECK_ARG(draw_buf != NULL, return);
     LV_PROFILER_DRAW_BEGIN;
+
+    /* TODO(v10): remove the layer check here once `draw_buf_clear` is standardized properly */
+    if(layer != NULL && draw_buf->handlers && draw_buf->handlers->buf_clear_cb) {
+        draw_buf->handlers->buf_clear_cb(draw_buf, a, layer);
+        LV_PROFILER_DRAW_END;
+        return;
+    }
 
     const lv_image_header_t * header = &draw_buf->header;
     uint32_t stride = header->stride;
@@ -250,7 +263,7 @@ lv_result_t lv_draw_buf_init(lv_draw_buf_t * draw_buf, uint32_t w, uint32_t h, l
     draw_buf->unaligned_data = data;
     draw_buf->handlers = &default_handlers;
     draw_buf->data_size = data_size;
-    if(lv_draw_buf_align(data, cf) != draw_buf->unaligned_data) {
+    if(data != NULL && lv_draw_buf_align(data, cf) != draw_buf->unaligned_data) {
         LV_LOG_INFO("Data is not aligned, ignored");
     }
     return LV_RESULT_OK;
@@ -574,6 +587,24 @@ void lv_image_buf_free(lv_image_dsc_t * dsc)
 
         lv_free((void *)dsc);
     }
+}
+
+bool lv_draw_buf_has_flag(const lv_draw_buf_t * draw_buf, lv_image_flags_t flag)
+{
+    LV_CHECK_ARG(draw_buf != NULL, return false);
+    return draw_buf->header.flags & flag;
+}
+
+void lv_draw_buf_set_flag(lv_draw_buf_t * draw_buf, lv_image_flags_t flag)
+{
+    LV_CHECK_ARG(draw_buf != NULL, return);
+    draw_buf->header.flags |= flag;
+}
+
+void lv_draw_buf_clear_flag(lv_draw_buf_t * draw_buf, lv_image_flags_t flag)
+{
+    LV_CHECK_ARG(draw_buf != NULL, return);
+    draw_buf->header.flags &= ~flag;
 }
 
 /**********************

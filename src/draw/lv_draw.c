@@ -353,14 +353,12 @@ lv_draw_task_t * lv_draw_get_next_available_task(lv_layer_t * layer, lv_draw_tas
 
     LV_PROFILER_DRAW_BEGIN;
 
-    /*If the first task is screen sized, there cannot be independent areas*/
+    /*If the first task covers the whole layer, there cannot be independent areas.*/
     if(layer->draw_task_head) {
-        int32_t hor_res = lv_display_get_horizontal_resolution(lv_refr_get_disp_refreshing());
-        int32_t ver_res = lv_display_get_vertical_resolution(lv_refr_get_disp_refreshing());
         lv_draw_task_t * t = layer->draw_task_head;
         if(t->state != LV_DRAW_TASK_STATE_WAITING &&
-           t->area.x1 <= 0 && t->area.x2 >= hor_res - 1 &&
-           t->area.y1 <= 0 && t->area.y2 >= ver_res - 1) {
+           t->area.x1 <= layer->buf_area.x1 && t->area.x2 >= layer->buf_area.x2 &&
+           t->area.y1 <= layer->buf_area.y1 && t->area.y2 >= layer->buf_area.y2) {
             LV_PROFILER_DRAW_END;
             return NULL;
         }
@@ -429,14 +427,14 @@ void lv_draw_unit_send_event(const char * name, lv_event_code_t code, void * par
 
 void lv_layer_init(lv_layer_t * layer)
 {
-    LV_ASSERT_NULL(layer);
+    LV_CHECK_ARG(layer != NULL, return);
     lv_memzero(layer, sizeof(lv_layer_t));
     lv_layer_reset(layer);
 }
 
 void lv_layer_reset(lv_layer_t * layer)
 {
-    LV_ASSERT_NULL(layer);
+    LV_CHECK_ARG(layer != NULL, return);
 #if LV_DRAW_TRANSFORM_USE_MATRIX
     lv_matrix_identity(&layer->matrix);
 #endif
@@ -477,7 +475,7 @@ void lv_draw_layer_init(lv_layer_t * layer, lv_layer_t * parent_layer, lv_color_
 
     LV_PROFILER_DRAW_BEGIN;
     lv_layer_init(layer);
-    lv_display_t * disp = lv_refr_get_disp_refreshing();
+    lv_display_t * disp = parent_layer ? parent_layer->display : lv_refr_get_disp_refreshing();
 
     layer->parent = parent_layer;
     layer->_clip_area = *area;
@@ -781,11 +779,6 @@ static inline size_t get_draw_dsc_size(lv_draw_task_type_t type)
     return 0;
 }
 
-/**
- * Clean-up resources allocated by a finished task
- * @param t         pointer to a draw task
- * @param disp      pointer to a display on which the task was drawn
- */
 void lv_draw_cleanup_task(lv_draw_task_t * t)
 {
     LV_PROFILER_DRAW_BEGIN;
